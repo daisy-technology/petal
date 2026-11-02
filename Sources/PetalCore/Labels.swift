@@ -71,14 +71,18 @@ public struct Label: Codable, Equatable {
 public final class Labels {
     public static let maxLength = 32
     private static let key = "labels"
+    private static let orderKey = "order"
 
     private let defaults: UserDefaults
     public private(set) var all: [String: Label]
+    /// Petal's own menu order, by uuid. Mission Control's order can't be changed.
+    public private(set) var order: [String]
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         let data = defaults.data(forKey: Self.key)
         all = data.flatMap { try? JSONDecoder().decode([String: Label].self, from: $0) } ?? [:]
+        order = defaults.stringArray(forKey: Self.orderKey) ?? []
     }
 
     public func name(for desktop: Desktop) -> String {
@@ -106,6 +110,34 @@ public final class Labels {
         update(uuid) { $0.color = .custom(normalized) }
     }
 
+    public func clearColor(_ uuid: String) {
+        update(uuid) { $0.color = nil }
+    }
+
+    /// Desktops in the user's order. Ones never moved keep Mission Control order, after the moved ones.
+    public func ordered(_ desktops: [Desktop]) -> [Desktop] {
+        let rank = Dictionary(order.enumerated().map { ($1, $0) }, uniquingKeysWith: min)
+        return desktops.enumerated().sorted { a, b in
+            switch (rank[a.element.uuid], rank[b.element.uuid]) {
+            case let (x?, y?): x < y
+            case (.some, nil): true
+            case (nil, .some): false
+            case (nil, nil): a.offset < b.offset
+            }
+        }.map(\.element)
+    }
+
+    /// Moves a Desktop within its display's list. Other displays keep their order.
+    public func move(_ uuid: String, to index: Int, within group: [Desktop]) {
+        var uuids = ordered(group).map(\.uuid)
+        guard let from = uuids.firstIndex(of: uuid) else { return }
+        uuids.remove(at: from)
+        uuids.insert(uuid, at: min(max(index, 0), uuids.count))
+        let inGroup = Set(uuids)
+        order = order.filter { !inGroup.contains($0) } + uuids
+        defaults.set(order, forKey: Self.orderKey)
+    }
+
     /// Forgets Desktops that no longer exist. An empty set means the Space list
     /// couldn't be read, so nothing is removed.
     public func prune(keeping uuids: Set<String>) {
@@ -114,6 +146,11 @@ public final class Labels {
         if kept.count != all.count {
             all = kept
             save()
+        }
+        let keptOrder = order.filter(uuids.contains)
+        if keptOrder.count != order.count {
+            order = keptOrder
+            defaults.set(order, forKey: Self.orderKey)
         }
     }
 

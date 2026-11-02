@@ -204,3 +204,134 @@ final class LabelsTests: XCTestCase {
         XCTAssertLessThan(ms, 5)
     }
 }
+
+final class OrderTests: XCTestCase {
+    private var suite: String!
+    private var defaults: UserDefaults!
+
+    override func setUp() {
+        suite = "petal.tests.\(UUID().uuidString)"
+        defaults = UserDefaults(suiteName: suite)
+    }
+
+    override func tearDown() {
+        defaults.removePersistentDomain(forName: suite)
+    }
+
+    private func desktops(_ display: String, _ uuids: [String], from id: Int = 1) -> [Desktop] {
+        uuids.enumerated().map { Desktop(uuid: $1, id64: id + $0, display: display, number: $0 + 1) }
+    }
+
+    // T-19
+    func testClearColorKeepsName() {
+        let labels = Labels(defaults: defaults)
+        labels.rename("a", to: "Mail")
+        labels.setCustomColor("a", hex: "#336699")
+        labels.clearColor("a")
+        XCTAssertNil(labels.color(for: "a"))
+        XCTAssertEqual(labels.all["a"]?.name, "Mail")
+    }
+
+    // T-20
+    func testDefaultOrderIsMissionControlOrder() {
+        let all = desktops("D1", ["a", "b", "c"])
+        XCTAssertEqual(Labels(defaults: defaults).ordered(all).map(\.uuid), ["a", "b", "c"])
+    }
+
+    // T-21
+    func testMovePersistsAndLeavesOtherDisplayAlone() {
+        let d1 = desktops("D1", ["a", "b", "c"])
+        let d2 = desktops("D2", ["x", "y"], from: 10)
+        let labels = Labels(defaults: defaults)
+        labels.move("y", to: 0, within: d2)
+        labels.move("c", to: 0, within: d1)
+        let again = Labels(defaults: defaults)
+        XCTAssertEqual(again.ordered(d1).map(\.uuid), ["c", "a", "b"])
+        XCTAssertEqual(again.ordered(d2).map(\.uuid), ["y", "x"])
+        labels.move("a", to: 99, within: d1)
+        XCTAssertEqual(labels.ordered(d1).map(\.uuid), ["c", "b", "a"])
+    }
+
+    // T-22
+    func testNewDesktopsGoLastAndRemovedOnesArePruned() {
+        let labels = Labels(defaults: defaults)
+        labels.move("c", to: 0, within: desktops("D1", ["a", "b", "c"]))
+        let now = desktops("D1", ["a", "c", "n"])
+        XCTAssertEqual(labels.ordered(now).map(\.uuid), ["c", "a", "n"])
+        labels.prune(keeping: Set(now.map(\.uuid)))
+        XCTAssertFalse(labels.order.contains("b"))
+        labels.prune(keeping: [])
+        XCTAssertFalse(labels.order.isEmpty)
+    }
+}
+
+final class SwitchingTests: XCTestCase {
+    private let ctrl: UInt64 = 0x40000
+    private let arrows: UInt64 = 0x840000
+
+    private func display(_ id: String, current: String, _ uuids: [String], from start: Int) -> [String: Any] {
+        ["Display Identifier": id, "Current Space": ["uuid": current],
+         "Spaces": uuids.enumerated().map { ["id64": start + $0, "type": 0, "uuid": $1] as [String: Any] }]
+    }
+
+    private var defaults: SpaceShortcuts { SpaceShortcuts.parse(nil) }
+
+    // T-23
+    func testNoPlanForCurrentDesktop() {
+        let snap = Spaces.parse([display("D1", current: "a", ["a", "b"], from: 1)])
+        XCTAssertNil(Spaces.plan(to: snap.desktops[0], in: snap, shortcuts: defaults))
+    }
+
+    // T-24
+    func testStepsCountFromThatDisplaysCurrentDesktop() {
+        let snap = Spaces.parse([
+            display("D1", current: "b", ["a", "b"], from: 1),
+            display("D2", current: "c", ["c", "d", "e"], from: 10),
+        ])
+        let right = Shortcut(keyCode: 124, modifiers: arrows)
+        let left = Shortcut(keyCode: 123, modifiers: arrows)
+        XCTAssertEqual(Spaces.plan(to: snap.desktop(uuid: "e")!, in: snap, shortcuts: defaults), .press(right, times: 2))
+        XCTAssertEqual(Spaces.plan(to: snap.desktop(uuid: "a")!, in: snap, shortcuts: defaults), .press(left, times: 1))
+    }
+
+    // T-25
+    func testDirectShortcutOnOneDisplay() {
+        let snap = Spaces.parse([display("D1", current: "a", ["a", "b", "c"], from: 1)])
+        var shortcuts = defaults
+        let three = Shortcut(keyCode: 20, modifiers: ctrl)
+        shortcuts.desktops[3] = three
+        XCTAssertEqual(Spaces.plan(to: snap.desktop(uuid: "c")!, in: snap, shortcuts: shortcuts), .press(three, times: 1))
+    }
+
+    // T-26
+    func testTwoDisplaysFallBackToSteps() {
+        let snap = Spaces.parse([
+            display("D1", current: "a", ["a", "b", "c"], from: 1),
+            display("D2", current: "x", ["x"], from: 10),
+        ])
+        var shortcuts = defaults
+        shortcuts.desktops[3] = Shortcut(keyCode: 20, modifiers: ctrl)
+        XCTAssertEqual(Spaces.plan(to: snap.desktop(uuid: "c")!, in: snap, shortcuts: shortcuts),
+                       .press(Shortcut(keyCode: 124, modifiers: arrows), times: 2))
+    }
+
+    // T-27
+    func testParseSymbolicHotKeys() {
+        XCTAssertEqual(defaults.left, Shortcut(keyCode: 123, modifiers: arrows))
+        XCTAssertEqual(defaults.right, Shortcut(keyCode: 124, modifiers: arrows))
+        XCTAssertTrue(defaults.desktops.isEmpty)
+
+        let parsed = SpaceShortcuts.parse([
+            "79": ["enabled": false, "value": ["parameters": [65535, 123, 8650752], "type": "standard"]],
+            "81": ["enabled": true, "value": ["parameters": [65535, 2, 1048576], "type": "standard"]],
+            "120": ["enabled": 1, "value": ["parameters": [51, 20, 262144], "type": "standard"]],
+            "121": ["enabled": 0, "value": ["parameters": [52, 21, 262144], "type": "standard"]],
+        ])
+        XCTAssertNil(parsed.left)
+        XCTAssertEqual(parsed.right, Shortcut(keyCode: 2, modifiers: 1048576))
+        XCTAssertEqual(parsed.desktops, [3: Shortcut(keyCode: 20, modifiers: 262144)])
+
+        let snap = Spaces.parse([display("D1", current: "b", ["a", "b"], from: 1)])
+        XCTAssertNil(Spaces.plan(to: snap.desktop(uuid: "a")!, in: snap, shortcuts: parsed))
+    }
+}
