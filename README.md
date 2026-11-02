@@ -10,9 +10,16 @@
   <a href="https://github.com/daisy-technology/petal/actions/workflows/ci.yml"><img src="https://github.com/daisy-technology/petal/actions/workflows/ci.yml/badge.svg?branch=dev" alt="CI"></a>
 </p>
 
-macOS calls every Space "Desktop 1", "Desktop 2" and gives you no way to rename them. Petal keeps a name and a color for each Desktop and shows the one you're on in the menu bar. Click the flower to see every Desktop on every display, click a name to rename it, and click the dot to pick a color. A colored Desktop also gets a thin edge in that color, which you can see in Mission Control too.
+macOS calls every Space "Desktop 1", "Desktop 2" and gives you no way to rename them. Petal keeps a name and a color for each Desktop and shows the one you're on in the menu bar. Click the flower to see every Desktop on every display. In that list:
 
-Petal needs no account, makes no network requests and asks for no permissions.
+- click a Desktop to switch to it
+- double-click to rename it
+- press and hold, then drag, to put the list in your own order
+- click the dot to pick one of eight colors, or drag along the hue strip for any color
+
+A colored Desktop also gets a thin edge in that color, which you can see in Mission Control too.
+
+Petal needs no account and makes no network requests. Naming, colors and ordering need no permissions. The first time you click a Desktop to switch to it, Petal asks for Accessibility access: macOS has no API for switching Desktops, so Petal presses your Mission Control shortcut (Control-arrow, or Control-number if you've turned those on) for you. Because Petal isn't notarized yet, macOS may ask you to allow it again after an update.
 
 ## Install
 
@@ -26,7 +33,7 @@ xattr -dr com.apple.quarantine /Applications/Petal.app
 
 ## What it can't do
 
-The labels under each Desktop in Mission Control stay "Desktop 1, 2, 3". Those are drawn by the Dock, and changing them means injecting code into the Dock with System Integrity Protection partly turned off. Petal won't go there.
+The labels under each Desktop in Mission Control stay "Desktop 1, 2, 3", and Mission Control keeps its own order; the order you set applies to Petal's menu. The Dock draws those labels and owns that order, and changing either means injecting code into the Dock with System Integrity Protection partly turned off. Petal won't go there.
 
 Petal reads Spaces through the same private SkyLight calls that WhichSpace and Spaceman use, because macOS has no public API for them. A future macOS update could break that. If it does, Petal shows "Desktop" in the menu bar and keeps your saved names.
 
