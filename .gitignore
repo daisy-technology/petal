@@ -2,3 +2,8 @@
 .swiftpm/
 dist/
 .DS_Store
+
+# Specs stay local
+SRS.md
+TEST_PLAN.md
+.vscode/
