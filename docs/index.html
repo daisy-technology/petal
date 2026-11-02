@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Petal · Name your Mac Desktops</title>
+<meta name="description" content="Petal puts a name and a color on each Mac Desktop, right in the menu bar. Free and open source, by Daisy Technology.">
+<meta property="og:title" content="Petal · Name your Mac Desktops">
+<meta property="og:description" content="A name and a color for every Mac Desktop, in the menu bar.">
+<meta property="og:image" content="https://daisy-technology.github.io/petal/icon.png">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.png">
+<style>
+  :root {
+    --bg: #f5f6fa;
+    --surface: #ffffff;
+    --text: #0b1030;
+    --muted: #5a6080;
+    --line: rgba(11, 16, 48, 0.1);
+    --accent: #2447d6;
+    --accent-text: #ffffff;
+    --panel: rgba(250, 251, 255, 0.72);
+    --panel-line: rgba(255, 255, 255, 0.6);
+    --row-hover: rgba(11, 16, 48, 0.07);
+    --orange: #ff9500; --blue: #007aff; --green: #34c759; --pink: #ff2d55;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #070b24; --surface: #0f1536; --text: #eef0ff; --muted: #a3a9cc;
+      --line: rgba(238, 240, 255, 0.12); --accent: #6f8bff; --accent-text: #070b24;
+      --panel: rgba(30, 34, 60, 0.7); --panel-line: rgba(255, 255, 255, 0.12);
+      --row-hover: rgba(255, 255, 255, 0.08);
+      --orange: #ff9f0a; --blue: #0a84ff; --green: #30d158; --pink: #ff375f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #070b24; --surface: #0f1536; --text: #eef0ff; --muted: #a3a9cc;
+    --line: rgba(238, 240, 255, 0.12); --accent: #6f8bff; --accent-text: #070b24;
+    --panel: rgba(30, 34, 60, 0.7); --panel-line: rgba(255, 255, 255, 0.12);
+    --row-hover: rgba(255, 255, 255, 0.08);
+    --orange: #ff9f0a; --blue: #0a84ff; --green: #30d158; --pink: #ff375f;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 100%/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { max-width: 64rem; margin: 0 auto; padding: 0 16px; }
+
+  header .wrap { display: flex; align-items: center; justify-content: space-between; height: 3.5rem; }
+  .brand { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; color: var(--text); }
+  .brand img { width: 28px; height: 28px; }
+  header nav { display: flex; gap: 1.25rem; font-size: 0.9rem; }
+  header nav a { color: var(--muted); }
+
+  .hero { text-align: center; padding: 3.5rem 0 2rem; }
+  .hero img { width: 112px; height: 112px; }
+  h1 {
+    font-size: clamp(2.4rem, 7vw, 4.25rem);
+    line-height: 1.04;
+    letter-spacing: -0.035em;
+    font-weight: 700;
+    margin: 1rem 0 0.75rem;
+  }
+  .lede { font-size: clamp(1.05rem, 2.2vw, 1.3rem); color: var(--muted); max-width: 34rem; margin: 0 auto; letter-spacing: -0.01em; }
+  .cta { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center; margin-top: 2rem; }
+  .button {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.8rem 1.5rem; border-radius: 999px;
+    font-weight: 600; font-size: 1rem;
+    background: var(--accent); color: var(--accent-text);
+    transition: transform 100ms ease-out, filter 100ms ease-out;
+  }
+  .button:hover { text-decoration: none; filter: brightness(1.08); }
+  .button:active { transform: scale(0.97); }
+  .button.secondary { background: transparent; color: var(--text); box-shadow: inset 0 0 0 1px var(--line); }
+  .fine { margin-top: 0.75rem; font-size: 0.85rem; color: var(--muted); }
+
+  /* Demo: a desktop with Petal's menu open */
+  .demo {
+    position: relative;
+    margin: 2.5rem auto 0;
+    max-width: 52rem;
+    aspect-ratio: 16 / 9;
+    border-radius: 18px;
+    overflow: hidden;
+    background:
+      radial-gradient(120% 90% at 20% 0%, #5d7cf0 0%, transparent 55%),
+      radial-gradient(90% 80% at 100% 100%, #f2a65a 0%, transparent 55%),
+      linear-gradient(160deg, #23307a, #0b1240 70%);
+    box-shadow: 0 30px 60px -20px rgba(8, 18, 79, 0.45);
+  }
+  .demo::after {
+    content: ""; position: absolute; inset: 22px 0 0 0;
+    border: 4px solid var(--edge, transparent);
+    pointer-events: none;
+    transition: border-color 250ms ease;
+  }
+  .menubar {
+    position: absolute; inset: 0 0 auto 0; height: 22px;
+    display: flex; align-items: center; justify-content: flex-end; gap: 14px;
+    padding: 0 12px;
+    font-size: 12px; font-weight: 500; color: #fff;
+    background: rgba(255, 255, 255, 0.16);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+  }
+  .menubar .item { display: flex; align-items: center; gap: 5px; padding: 1px 7px; border-radius: 5px; background: rgba(255, 255, 255, 0.22); }
+  .flower { width: 13px; height: 13px; }
+  .panel {
+    position: absolute; top: 30px; right: 70px;
+    width: min(290px, calc(100% - 24px));
+    padding: 8px; border-radius: 12px;
+    background: var(--panel);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    backdrop-filter: blur(30px) saturate(180%);
+    box-shadow: inset 0 0 0 1px var(--panel-line), 0 16px 40px -12px rgba(0, 0, 0, 0.45);
+    color: var(--text);
+    font-size: 13px;
+    transform-origin: top right;
+  }
+  .row {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 6px 8px; border: 0; border-radius: 6px;
+    background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
+  }
+  .row:hover, .row:focus-visible { background: var(--row-hover); outline: none; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1.5px var(--muted); }
+  .dot[style] { box-shadow: none; }
+  .row .name { flex: 1; }
+  .now { font-size: 10px; font-weight: 600; color: var(--muted); visibility: hidden; }
+  .row[aria-current="true"] .now { visibility: visible; }
+  .panel hr { border: 0; border-top: 1px solid var(--line); margin: 6px 4px; }
+  .panel .hint { padding: 2px 8px; font-size: 11px; color: var(--muted); }
+  .demo-caption { text-align: center; color: var(--muted); font-size: 0.9rem; margin-top: 0.9rem; }
+
+  section { padding: 3.5rem 0 0; }
+  h2 { font-size: clamp(1.6rem, 3.5vw, 2.2rem); letter-spacing: -0.025em; line-height: 1.15; margin: 0 0 1.25rem; }
+  .points { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; }
+  .point { background: var(--surface); border-radius: 16px; padding: 1.25rem; box-shadow: inset 0 0 0 1px var(--line); }
+  .point h3 { font-size: 1.05rem; margin: 0 0 0.35rem; letter-spacing: -0.01em; }
+  .point p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+  ol.steps { padding-left: 1.25rem; margin: 0; max-width: 40rem; }
+  ol.steps li { margin-bottom: 0.6rem; }
+  code { font: 0.88em ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); padding: 0.15em 0.4em; border-radius: 6px; overflow-wrap: anywhere; }
+  .note { color: var(--muted); font-size: 0.92rem; max-width: 40rem; }
+
+  footer { margin-top: 4.5rem; padding: 2rem 0 3rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.9rem; }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 0.75rem 1.5rem; justify-content: space-between; }
+  footer nav { display: flex; gap: 1.25rem; }
+
+  @media (max-width: 560px) {
+    .panel { right: 12px; top: 28px; font-size: 12px; }
+    .demo { aspect-ratio: 4 / 5; }
+    header nav a.hide-sm { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .panel { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
+    .menubar { background: rgba(20, 24, 60, 0.9); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <a class="brand" href="./"><img src="icon.png" alt="">Petal</a>
+    <nav>
+      <a class="hide-sm" href="#how">How it works</a>
+      <a href="https://github.com/daisy-technology/petal">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="hero">
+    <img src="icon.png" alt="Petal icon: a white daisy with one orange petal">
+    <h1>Name your Desktops.</h1>
+    <p class="lede">"Desktop 1" and "Desktop 2" don't tell you much. Petal puts a name and a color on each Mac Desktop and shows the one you're on in the menu bar.</p>
+    <div class="cta">
+      <a class="button" href="https://github.com/daisy-technology/petal/releases/latest/download/Petal.zip">
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1a.75.75 0 0 1 .75.75v7.19l2.22-2.22a.75.75 0 1 1 1.06 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-3.5-3.5a.75.75 0 1 1 1.06-1.06l2.22 2.22V1.75A.75.75 0 0 1 8 1ZM2.75 12.5a.75.75 0 0 0 0 1.5h10.5a.75.75 0 0 0 0-1.5H2.75Z"/></svg>
+        Download for Mac
+      </a>
+      <a class="button secondary" href="https://github.com/daisy-technology/petal">View source</a>
+    </div>
+    <p class="fine">Free and open source · macOS 14 or later · Apple silicon and Intel</p>
+  </div>
+
+  <div class="demo" id="demo" style="--edge: var(--orange)">
+    <div class="menubar" aria-hidden="true">
+      <span class="item"><svg class="flower" viewBox="0 0 24 24"><g id="flower" fill="var(--orange)"><circle cx="12" cy="12" r="3.2"/><g opacity=".9"><ellipse cx="12" cy="5" rx="2.4" ry="4"/><ellipse cx="12" cy="19" rx="2.4" ry="4"/><ellipse cx="5" cy="12" rx="4" ry="2.4"/><ellipse cx="19" cy="12" rx="4" ry="2.4"/><ellipse cx="7" cy="7" rx="2.4" ry="4" transform="rotate(-45 7 7)"/><ellipse cx="17" cy="17" rx="2.4" ry="4" transform="rotate(-45 17 17)"/><ellipse cx="17" cy="7" rx="2.4" ry="4" transform="rotate(45 17 7)"/><ellipse cx="7" cy="17" rx="2.4" ry="4" transform="rotate(45 7 17)"/></g></g></svg><span id="current">Design</span></span>
+      <span>Tue 3 Nov 9:41</span>
+    </div>
+    <div class="panel" role="group" aria-label="Petal menu preview">
+      <button class="row" data-color="var(--blue)"><span class="dot" style="background: var(--blue)"></span><span class="name">Mail &amp; Chat</span><span class="now">Now</span></button>
+      <button class="row" data-color="var(--orange)" aria-current="true"><span class="dot" style="background: var(--orange)"></span><span class="name">Design</span><span class="now">Now</span></button>
+      <button class="row" data-color="var(--green)"><span class="dot" style="background: var(--green)"></span><span class="name">Code</span><span class="now">Now</span></button>
+      <button class="row" data-color="var(--pink)"><span class="dot" style="background: var(--pink)"></span><span class="name">Music</span><span class="now">Now</span></button>
+      <button class="row" data-color=""><span class="dot"></span><span class="name">Desktop 5</span><span class="now">Now</span></button>
+      <hr>
+      <div class="hint">Click a name to rename it.</div>
+    </div>
+  </div>
+  <p class="demo-caption">Try it: pick a Desktop in the menu above.</p>
+
+  <section id="how">
+    <h2>How it works</h2>
+    <div class="points">
+      <div class="point">
+        <h3>Click a name to rename it</h3>
+        <p>Petal lists every Desktop on every display in Mission Control order. Clear a name and it goes back to "Desktop 3".</p>
+      </div>
+      <div class="point">
+        <h3>Give each one a color</h3>
+        <p>The flower in the menu bar takes the color, and a thin edge in that color frames the Desktop, including in Mission Control.</p>
+      </div>
+      <div class="point">
+        <h3>Nothing to set up</h3>
+        <p>No account and no network access. Petal never asks for Accessibility or Screen Recording permissions.</p>
+      </div>
+    </div>
+    <p class="note">The labels inside Mission Control itself stay "Desktop 1, 2, 3". macOS only allows changing those with System Integrity Protection turned off, and Petal won't ask you to do that.</p>
+  </section>
+
+  <section id="install">
+    <h2>First launch</h2>
+    <p class="note">Petal isn't notarized by Apple yet, so macOS stops it the first time you open it.</p>
+    <ol class="steps">
+      <li>Unzip <code>Petal.zip</code> and drag <strong>Petal</strong> to Applications.</li>
+      <li>Open it. When macOS says it can't verify the developer, click <strong>Done</strong>.</li>
+      <li>Go to System Settings → Privacy &amp; Security, scroll down and click <strong>Open Anyway</strong>.</li>
+    </ol>
+    <p class="note">Or run this once in Terminal: <code>xattr -dr com.apple.quarantine /Applications/Petal.app</code></p>
+  </section>
+
+  <section>
+    <h2>Windows and Linux</h2>
+    <p class="note">Petal is Mac only for now. Versions for Windows and Linux are planned. Watch the <a href="https://github.com/daisy-technology/petal">repository</a> to hear when they ship.</p>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 <a href="https://www.daisytechs.com/">Daisy Technology</a> · MIT License</span>
+    <nav>
+      <a href="https://github.com/daisy-technology/petal">GitHub</a>
+      <a href="https://github.com/daisy-technology/petal/issues">Report a problem</a>
+      <a href="https://github.com/sponsors/daisy-technology">Sponsor</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+  // Demo: picking a row makes it the current Desktop, like switching in real life.
+  const demo = document.getElementById('demo');
+  const current = document.getElementById('current');
+  const flower = document.getElementById('flower');
+  demo.querySelectorAll('.row').forEach((row) => {
+    row.addEventListener('click', () => {
+      demo.querySelectorAll('.row').forEach((r) => r.removeAttribute('aria-current'));
+      row.setAttribute('aria-current', 'true');
+      current.textContent = row.querySelector('.name').textContent;
+      const color = row.dataset.color;
+      flower.setAttribute('fill', color || '#ffffff');
+      demo.style.setProperty('--edge', color || 'transparent');
+    });
+  });
+</script>
+</body>
+</html>
