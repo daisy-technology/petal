@@ -333,5 +333,11 @@ final class SwitchingTests: XCTestCase {
 
         let snap = Spaces.parse([display("D1", current: "b", ["a", "b"], from: 1)])
         XCTAssertNil(Spaces.plan(to: snap.desktop(uuid: "a")!, in: snap, shortcuts: parsed))
+
+        // Enabled with no key data (how macOS stores untouched defaults) means the default keys.
+        let bare = SpaceShortcuts.parse(["79": ["enabled": true], "81": ["enabled": 1], "118": ["enabled": true]])
+        XCTAssertEqual(bare.left, Shortcut(keyCode: 123, modifiers: arrows))
+        XCTAssertEqual(bare.right, Shortcut(keyCode: 124, modifiers: arrows))
+        XCTAssertEqual(bare.desktops[1], Shortcut(keyCode: 18, modifiers: ctrl))
     }
 }

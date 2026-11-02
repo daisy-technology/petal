@@ -53,6 +53,10 @@ final class AppModel: ObservableObject {
     @Published private(set) var snapshot = SpacesSnapshot()
     @Published private(set) var activeID = 0
     @Published private(set) var launchAtLogin = SMAppService.mainApp.status == .enabled
+    /// Set after a click to switch was refused for lack of Accessibility access.
+    @Published private(set) var needsAccessibility = false
+    /// Set when the Mission Control shortcut Petal needs is turned off.
+    @Published private(set) var shortcutOff = false
     @Published var showEdge: Bool {
         didSet {
             UserDefaults.standard.set(showEdge, forKey: "showEdge")
@@ -86,7 +90,7 @@ final class AppModel: ObservableObject {
     var displays: [(id: String, desktops: [Desktop])] {
         var order: [String] = []
         var groups: [String: [Desktop]] = [:]
-        for desktop in snapshot.desktops {
+        for desktop in labels.ordered(snapshot.desktops) {
             if groups[desktop.display] == nil { order.append(desktop.display) }
             groups[desktop.display, default: []].append(desktop)
         }
@@ -110,6 +114,42 @@ final class AppModel: ObservableObject {
         objectWillChange.send()
         labels.toggleColor(desktop.uuid, swatch)
         syncEdges()
+    }
+
+    func clearColor(_ desktop: Desktop) {
+        objectWillChange.send()
+        labels.clearColor(desktop.uuid)
+        syncEdges()
+    }
+
+    func move(_ desktop: Desktop, to index: Int) {
+        objectWillChange.send()
+        labels.move(desktop.uuid, to: index, within: snapshot.desktops.filter { $0.display == desktop.display })
+    }
+
+    /// Starts switching to `desktop`. Returns true when the menu should close.
+    func switchTo(_ desktop: Desktop) -> Bool {
+        refresh()
+        guard let target = snapshot.desktop(uuid: desktop.uuid) else { return false }
+        if snapshot.current[target.display] == target.uuid { return true }
+        guard let plan = Spaces.plan(to: target, in: snapshot, shortcuts: Switcher.shortcuts) else {
+            shortcutOff = true
+            return false
+        }
+        // Ask macOS for Accessibility only the first time; after that, point to Settings.
+        guard Switcher.isTrusted(prompt: !needsAccessibility) else {
+            needsAccessibility = true
+            return false
+        }
+        needsAccessibility = false
+        shortcutOff = false
+        // Let the menu close before the keys go out.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { Switcher.run(plan) }
+        return true
+    }
+
+    func recheckAccess() {
+        if needsAccessibility, Switcher.isTrusted(prompt: false) { needsAccessibility = false }
     }
 
     func setCustomColor(_ desktop: Desktop, hue: Double) {

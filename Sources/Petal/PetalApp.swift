@@ -27,70 +27,150 @@ struct PetalApp: App {
     }
 }
 
+enum Metrics {
+    static let rowHeight: CGFloat = 30
+    static let inset: CGFloat = 8
+    /// Critically damped: rows settle without bouncing (apple-design default).
+    static let spring = Animation.spring(response: 0.3, dampingFraction: 1)
+}
+
 struct MenuView: View {
     @ObservedObject var model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var picking: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(model.displays.enumerated()), id: \.element.id) { index, display in
                 if model.displays.count > 1 {
                     Text("Display \(index + 1)")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
-                        .padding(.horizontal, 8)
-                        .padding(.top, index == 0 ? 2 : 10)
+                        .padding(.horizontal, Metrics.inset)
+                        .padding(.top, index == 0 ? 4 : 12)
+                        .padding(.bottom, 4)
                 }
-                ForEach(display.desktops) { desktop in
-                    DesktopRow(model: model, desktop: desktop)
+                DesktopList(model: model, desktops: display.desktops, picking: $picking) { desktop in
+                    if model.switchTo(desktop) { dismiss() }
                 }
             }
             if model.snapshot.desktops.isEmpty {
                 Text("Couldn’t read your Desktops.")
                     .foregroundStyle(.secondary)
-                    .padding(8)
+                    .padding(Metrics.inset)
+            }
+
+            if model.needsAccessibility {
+                Notice(text: "Petal needs Accessibility access to switch Desktops. Turn on Petal in Settings, then click again.",
+                       action: "Open Accessibility Settings", perform: Switcher.openAccessibilitySettings)
+            } else if model.shortcutOff {
+                Notice(text: "Turn on “Move left a space” and “Move right a space” in Keyboard Shortcuts → Mission Control.",
+                       action: "Open Keyboard Settings", perform: Switcher.openKeyboardShortcuts)
             }
 
             Divider().padding(.vertical, 6)
 
-            Group {
-                Toggle("Show color edge", isOn: $model.showEdge)
-                Toggle("Launch at login", isOn: Binding(
-                    get: { model.launchAtLogin },
-                    set: { model.setLaunchAtLogin($0) }))
-            }
-            .toggleStyle(.switch)
-            .controlSize(.mini)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 2)
+            SettingRow(title: "Show color edge", isOn: $model.showEdge)
+            SettingRow(title: "Launch at login", isOn: Binding(
+                get: { model.launchAtLogin },
+                set: { model.setLaunchAtLogin($0) }))
 
             Divider().padding(.vertical, 6)
 
-            HStack {
-                Text("Click a name to rename it.")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                Spacer()
-                Button("Quit") { NSApp.terminate(nil) }
-                    .keyboardShortcut("q")
-                    .buttonStyle(.borderless)
-            }
-            .padding(.horizontal, 8)
+            Text("Click to switch, double-click to rename, hold to reorder.")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, Metrics.inset)
+                .padding(.bottom, 4)
+            MenuButton(title: "Quit Petal", shortcut: "⌘Q") { NSApp.terminate(nil) }
+                .keyboardShortcut("q")
         }
-        .padding(8)
-        .frame(width: 290)
-        .onAppear { model.refresh() }
+        .padding(6)
+        .frame(width: 280)
+        .onAppear {
+            model.refresh()
+            model.recheckAccess()
+        }
+    }
+}
+
+/// One display's Desktops. Press and hold a row to lift it, drag, release to drop.
+struct DesktopList: View {
+    @ObservedObject var model: AppModel
+    let desktops: [Desktop]
+    @Binding var picking: String?
+    let onSwitch: (Desktop) -> Void
+
+    @State private var dragging: String?
+    @State private var offset: CGFloat = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var from: Int? { desktops.firstIndex { $0.uuid == dragging } }
+    private var target: Int? {
+        from.map { min(max($0 + Int((offset / Metrics.rowHeight).rounded()), 0), desktops.count - 1) }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(desktops.enumerated()), id: \.element.uuid) { index, desktop in
+                let lifted = dragging == desktop.uuid
+                DesktopRow(
+                    model: model,
+                    desktop: desktop,
+                    lifted: lifted,
+                    picking: Binding(
+                        get: { picking == desktop.uuid },
+                        set: { picking = $0 ? desktop.uuid : nil }),
+                    onSwitch: { onSwitch(desktop) },
+                    onLift: {
+                        picking = nil
+                        withAnimation(reduceMotion ? nil : Metrics.spring) { dragging = desktop.uuid }
+                    },
+                    onDrag: { offset = $0 },
+                    onDrop: { drop(desktop) })
+                .offset(y: shift(index, lifted: lifted))
+                .zIndex(lifted ? 1 : 0)
+                .animation(lifted || reduceMotion ? nil : Metrics.spring, value: target)
+            }
+        }
+    }
+
+    /// The lifted row follows the pointer 1:1; the rows it passes slide one row the other way.
+    private func shift(_ index: Int, lifted: Bool) -> CGFloat {
+        guard let from, let target else { return 0 }
+        if lifted { return offset }
+        if from < target, index > from, index <= target { return -Metrics.rowHeight }
+        if target < from, index >= target, index < from { return Metrics.rowHeight }
+        return 0
+    }
+
+    private func drop(_ desktop: Desktop) {
+        let destination = target ?? 0
+        withAnimation(reduceMotion ? nil : Metrics.spring) {
+            model.move(desktop, to: destination)
+            dragging = nil
+            offset = 0
+        }
     }
 }
 
 struct DesktopRow: View {
     @ObservedObject var model: AppModel
     let desktop: Desktop
+    let lifted: Bool
+    @Binding var picking: Bool
+    let onSwitch: () -> Void
+    let onLift: () -> Void
+    let onDrag: (CGFloat) -> Void
+    let onDrop: () -> Void
 
     @State private var editing = false
-    @State private var picking = false
     @State private var customOpen = false
     @State private var hue = 0.0
     @State private var hovering = false
+    @State private var pressed = false
+    @State private var suppressTap = false
     @State private var draft = ""
     @FocusState private var focused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -121,68 +201,148 @@ struct DesktopRow: View {
                     Text(name)
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                        .onTapGesture(perform: beginEditing)
-                        .help("Click to rename")
-                        .accessibilityAddTraits(.isButton)
-                        .accessibilityHint("Renames this Desktop")
                 }
 
-                if isCurrent {
-                    Text("Now")
-                        .font(.caption2.weight(.semibold))
+                if isCurrent && !editing {
+                    Image(systemName: "checkmark")
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
+                        .accessibilityLabel("Current Desktop")
                 }
             }
+            .frame(height: Metrics.rowHeight - 4)
+            .padding(.horizontal, Metrics.inset)
+            .background(RoundedRectangle(cornerRadius: 6).fill(highlight))
+            .contentShape(Rectangle())
+            .gesture(editing ? nil : taps)
+            .simultaneousGesture(editing ? nil : pressTracking)
+            .simultaneousGesture(editing ? nil : reorder)
+            .onHover { hovering = $0 }
+            .padding(.vertical, 2)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityHint("Switches to this Desktop")
+            .accessibilityAction(named: "Rename", beginEditing)
 
-            if picking {
-                HStack(spacing: 8) {
-                    ForEach(Swatch.allCases) { option in
-                        Button { model.toggleColor(desktop, option) } label: {
-                            Circle()
-                                .fill(option.color)
-                                .frame(width: 16, height: 16)
-                                .overlay(Circle().strokeBorder(.primary.opacity(tint == .swatch(option) ? 0.9 : 0), lineWidth: 2))
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(option.rawValue.capitalized)
-                        .accessibilityAddTraits(tint == .swatch(option) ? .isSelected : [])
-                    }
-
-                    Button {
-                        hue = tint?.hue ?? hue
-                        customOpen.toggle()
-                    } label: {
-                        Circle()
-                            .fill(AngularGradient(colors: Self.rainbow, center: .center))
-                            .frame(width: 16, height: 16)
-                            .overlay(Circle().strokeBorder(.primary.opacity(isCustom ? 0.9 : 0), lineWidth: 2))
-                    }
-                    .buttonStyle(.plain)
-                    .help("Custom color")
-                    .accessibilityLabel("Custom color")
-                    .accessibilityAddTraits(isCustom ? .isSelected : [])
-                }
-                .padding(.leading, 22)
-                .transition(.opacity)
-
-                if customOpen {
-                    HueStrip(hue: hue) { newHue in
-                        hue = newHue
-                        model.setCustomColor(desktop, hue: newHue)
-                    }
-                    .padding(.leading, 22)
-                    .padding(.trailing, 4)
-                    .transition(.opacity)
-                }
-            }
+            if picking { swatches }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .background(RoundedRectangle(cornerRadius: 6).fill(.primary.opacity(hovering || editing ? 0.07 : 0)))
-        .onHover { hovering = $0 }
+        .scaleEffect(lifted ? 1.03 : 1)
+        .shadow(color: .black.opacity(lifted ? 0.18 : 0), radius: 8, y: 3)
         .animation(reduceMotion ? nil : .snappy(duration: 0.2), value: picking)
         .animation(reduceMotion ? nil : .snappy(duration: 0.2), value: customOpen)
+    }
+
+    private var highlight: Color {
+        if lifted { return Color(nsColor: .controlBackgroundColor) }
+        if pressed { return .primary.opacity(0.12) }
+        return .primary.opacity(hovering || editing ? 0.07 : 0)
+    }
+
+    // MARK: Gestures
+
+    /// Double-click renames; a single click switches once the double-click window has passed.
+    private var taps: some Gesture {
+        TapGesture(count: 2).onEnded(beginEditing)
+            .exclusively(before: TapGesture().onEnded {
+                if suppressTap { return }
+                onSwitch()
+            })
+    }
+
+    /// Highlights the row the moment it's pressed, before the click is decided.
+    private var pressTracking: some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { _ in pressed = true }
+            .onEnded { _ in pressed = false }
+    }
+
+    private var reorder: some Gesture {
+        LongPressGesture(minimumDuration: 0.3)
+            .sequenced(before: DragGesture(minimumDistance: 0))
+            .onChanged { value in
+                switch value {
+                case .first(true):
+                    break
+                case .second(true, let drag):
+                    if !suppressTap {
+                        suppressTap = true
+                        onLift()
+                    }
+                    onDrag(drag?.translation.height ?? 0)
+                default:
+                    break
+                }
+            }
+            .onEnded { _ in
+                guard suppressTap else { return }
+                onDrop()
+                // The release can still look like a click; ignore it until the double-click window ends.
+                DispatchQueue.main.asyncAfter(deadline: .now() + NSEvent.doubleClickInterval + 0.1) { suppressTap = false }
+            }
+    }
+
+    // MARK: Colors
+
+    private var swatches: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 7) {
+                Button { model.clearColor(desktop) } label: {
+                    Circle()
+                        .strokeBorder(.secondary, lineWidth: 1.5)
+                        .overlay(Rectangle().fill(.secondary).frame(width: 1.5).rotationEffect(.degrees(45)))
+                        .clipShape(Circle())
+                        .frame(width: 16, height: 16)
+                        .overlay(selectionRing(tint == nil))
+                }
+                .buttonStyle(.plain)
+                .help("No color")
+                .accessibilityLabel("No color")
+                .accessibilityAddTraits(tint == nil ? .isSelected : [])
+
+                ForEach(Swatch.allCases) { option in
+                    Button { model.toggleColor(desktop, option) } label: {
+                        Circle()
+                            .fill(option.color)
+                            .frame(width: 16, height: 16)
+                            .overlay(selectionRing(tint == .swatch(option)))
+                    }
+                    .buttonStyle(.plain)
+                    .help(option.rawValue.capitalized)
+                    .accessibilityLabel(option.rawValue.capitalized)
+                    .accessibilityAddTraits(tint == .swatch(option) ? .isSelected : [])
+                }
+
+                Button {
+                    hue = tint?.hue ?? hue
+                    customOpen.toggle()
+                } label: {
+                    Circle()
+                        .fill(AngularGradient(colors: Self.rainbow, center: .center))
+                        .frame(width: 16, height: 16)
+                        .overlay(selectionRing(isCustom))
+                }
+                .buttonStyle(.plain)
+                .help("Custom color")
+                .accessibilityLabel("Custom color")
+                .accessibilityAddTraits(isCustom ? .isSelected : [])
+            }
+
+            if customOpen {
+                HueStrip(hue: hue) { newHue in
+                    hue = newHue
+                    model.setCustomColor(desktop, hue: newHue)
+                }
+                .padding(.trailing, 4)
+                .transition(.opacity)
+            }
+        }
+        .padding(.leading, Metrics.inset + 28)
+        .padding(.bottom, 6)
+        .transition(.opacity)
+    }
+
+    private func selectionRing(_ selected: Bool) -> some View {
+        Circle().strokeBorder(.primary.opacity(selected ? 0.9 : 0), lineWidth: 2).padding(-3)
     }
 
     static let rainbow = stride(from: 0.0, through: 1.0, by: 1.0 / 6).map {
@@ -207,16 +367,81 @@ struct DesktopRow: View {
         .contentShape(Rectangle())
     }
 
+    // MARK: Rename
+
     private func beginEditing() {
         draft = model.labels.all[desktop.uuid]?.name ?? ""
         editing = true
         focused = true
+        // Select the old name so typing replaces it.
+        DispatchQueue.main.async { NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil) }
     }
 
     private func commit() {
         guard editing else { return }
         model.rename(desktop, to: draft)
         editing = false
+    }
+}
+
+struct SettingRow: View {
+    let title: String
+    @Binding var isOn: Bool
+
+    var body: some View {
+        HStack {
+            Text(title)
+            Spacer()
+            Toggle(title, isOn: $isOn)
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+        }
+        .frame(height: Metrics.rowHeight - 4)
+        .padding(.horizontal, Metrics.inset)
+    }
+}
+
+struct MenuButton: View {
+    let title: String
+    let shortcut: String
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                Text(title)
+                Spacer()
+                Text(shortcut).foregroundStyle(.secondary)
+            }
+            .frame(height: Metrics.rowHeight - 4)
+            .padding(.horizontal, Metrics.inset)
+            .background(RoundedRectangle(cornerRadius: 6).fill(.primary.opacity(hovering ? 0.07 : 0)))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+    }
+}
+
+struct Notice: View {
+    let text: String
+    let action: String
+    let perform: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(text)
+                .font(.callout)
+                .fixedSize(horizontal: false, vertical: true)
+            Button(action, action: perform)
+                .controlSize(.small)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 8).fill(.orange.opacity(0.14)))
+        .padding(.top, 6)
     }
 }
 

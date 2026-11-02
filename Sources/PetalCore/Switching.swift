@@ -30,21 +30,29 @@ public struct SpaceShortcuts: Equatable {
         let defaultRight = Shortcut(keyCode: 124, modifiers: arrowModifiers)
 
         var result = SpaceShortcuts()
-        result.left = hotKeys[leftID] == nil ? defaultLeft : enabledShortcut(hotKeys[leftID])
-        result.right = hotKeys[rightID] == nil ? defaultRight : enabledShortcut(hotKeys[rightID])
+        result.left = hotKeys[leftID] == nil ? defaultLeft : enabledShortcut(hotKeys[leftID], default: defaultLeft)
+        result.right = hotKeys[rightID] == nil ? defaultRight : enabledShortcut(hotKeys[rightID], default: defaultRight)
         for id in firstDesktopID...lastDesktopID {
-            if let shortcut = enabledShortcut(hotKeys[String(id)]) {
-                result.desktops[id - firstDesktopID + 1] = shortcut
+            let number = id - firstDesktopID + 1
+            if let shortcut = enabledShortcut(hotKeys[String(id)], default: defaultDesktop(number)) {
+                result.desktops[number] = shortcut
             }
         }
         return result
     }
 
-    private static func enabledShortcut(_ entry: Any?) -> Shortcut? {
-        guard let entry = entry as? [String: Any],
-              flag(entry["enabled"]),
-              let value = entry["value"] as? [String: Any],
-              let parameters = value["parameters"] as? [Any], parameters.count >= 3,
+    /// Control-1 … Control-9, the keys macOS assigns when "Switch to Desktop N" is turned on.
+    static func defaultDesktop(_ number: Int) -> Shortcut? {
+        let digitKeys: [UInt16] = [18, 19, 20, 21, 23, 22, 26, 28, 25]
+        guard (1...digitKeys.count).contains(number) else { return nil }
+        return Shortcut(keyCode: digitKeys[number - 1], modifiers: 0x40000)
+    }
+
+    /// An enabled entry with no key data uses the default keys; macOS stores untouched shortcuts that way.
+    private static func enabledShortcut(_ entry: Any?, default fallback: Shortcut?) -> Shortcut? {
+        guard let entry = entry as? [String: Any], flag(entry["enabled"]) else { return nil }
+        guard let value = entry["value"] as? [String: Any] else { return fallback }
+        guard let parameters = value["parameters"] as? [Any], parameters.count >= 3,
               let keyCode = number(parameters[1]), let modifiers = number(parameters[2]),
               keyCode >= 0, keyCode < 0xFFFF, modifiers >= 0
         else { return nil }
