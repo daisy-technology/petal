@@ -5,10 +5,66 @@ public enum Swatch: String, Codable, CaseIterable, Identifiable {
     public var id: String { rawValue }
 }
 
+/// A Desktop's color: a preset swatch or any custom `#RRGGBB`.
+/// Stored as a single string ("orange" or "#FF8800").
+public enum Tint: Equatable {
+    case swatch(Swatch)
+    case custom(String)
+
+    public init?(_ raw: String) {
+        if let swatch = Swatch(rawValue: raw) {
+            self = .swatch(swatch)
+        } else if let hex = Self.normalizedHex(raw) {
+            self = .custom(hex)
+        } else {
+            return nil
+        }
+    }
+
+    public var raw: String {
+        switch self {
+        case .swatch(let swatch): swatch.rawValue
+        case .custom(let hex): hex
+        }
+    }
+
+    /// 0-255 components of a custom color; nil for presets, which follow the system palette.
+    public var rgb: (r: Int, g: Int, b: Int)? {
+        guard case .custom(let hex) = self, let value = Int(hex.dropFirst(), radix: 16) else { return nil }
+        return (value >> 16 & 0xFF, value >> 8 & 0xFF, value & 0xFF)
+    }
+
+    static func normalizedHex(_ raw: String) -> String? {
+        let digits = raw.dropFirst()
+        guard raw.hasPrefix("#"), digits.count == 6, digits.allSatisfy(\.isHexDigit) else { return nil }
+        return "#" + digits.uppercased()
+    }
+}
+
 public struct Label: Codable, Equatable {
     public var name: String?
-    public var color: Swatch?
+    public var color: Tint?
     var isEmpty: Bool { name == nil && color == nil }
+
+    init(name: String? = nil, color: Tint? = nil) {
+        self.name = name
+        self.color = color
+    }
+
+    private enum Keys: String, CodingKey { case name, color }
+
+    // A color this version doesn't understand is dropped instead of failing the whole store.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: Keys.self)
+        name = try c.decodeIfPresent(String.self, forKey: .name)
+        color = try c.decodeIfPresent(String.self, forKey: .color).flatMap(Tint.init)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: Keys.self)
+        try c.encodeIfPresent(name, forKey: .name)
+        try c.encodeIfPresent(color?.raw, forKey: .color)
+    }
 }
 
 /// Names and colors keyed by Space uuid, stored in UserDefaults.
@@ -29,7 +85,7 @@ public final class Labels {
         all[desktop.uuid]?.name ?? desktop.defaultName
     }
 
-    public func color(for uuid: String) -> Swatch? {
+    public func color(for uuid: String) -> Tint? {
         all[uuid]?.color
     }
 
@@ -41,7 +97,13 @@ public final class Labels {
 
     /// Picking the color a Desktop already has clears it.
     public func toggleColor(_ uuid: String, _ swatch: Swatch) {
-        update(uuid) { $0.color = $0.color == swatch ? nil : swatch }
+        update(uuid) { $0.color = $0.color == .swatch(swatch) ? nil : .swatch(swatch) }
+    }
+
+    /// Sets any `#RRGGBB` color. Anything else is ignored and the current color stays.
+    public func setCustomColor(_ uuid: String, hex: String) {
+        guard let normalized = Tint.normalizedHex(hex) else { return }
+        update(uuid) { $0.color = .custom(normalized) }
     }
 
     /// Forgets Desktops that no longer exist. An empty set means the Space list

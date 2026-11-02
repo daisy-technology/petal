@@ -116,7 +116,7 @@ final class LabelsTests: XCTestCase {
         first.toggleColor("a", .teal)
         let second = Labels(defaults: defaults)
         XCTAssertEqual(second.name(for: d1), "Mail")
-        XCTAssertEqual(second.color(for: "a"), .teal)
+        XCTAssertEqual(second.color(for: "a"), .swatch(.teal))
     }
 
     // T-11
@@ -141,9 +141,9 @@ final class LabelsTests: XCTestCase {
     func testToggleColor() {
         let labels = Labels(defaults: defaults)
         labels.toggleColor("a", .pink)
-        XCTAssertEqual(labels.color(for: "a"), .pink)
+        XCTAssertEqual(labels.color(for: "a"), .swatch(.pink))
         labels.toggleColor("a", .blue)
-        XCTAssertEqual(labels.color(for: "a"), .blue)
+        XCTAssertEqual(labels.color(for: "a"), .swatch(.blue))
         labels.toggleColor("a", .blue)
         XCTAssertNil(labels.color(for: "a"))
     }
@@ -156,6 +156,37 @@ final class LabelsTests: XCTestCase {
         labels.rename("a", to: "")
         labels.toggleColor("a", .red)
         XCTAssertTrue(labels.all.isEmpty)
+    }
+
+    // T-16
+    func testCustomColorIsNormalizedAndPersists() {
+        let labels = Labels(defaults: defaults)
+        labels.setCustomColor("a", hex: "#ff8800")
+        XCTAssertEqual(labels.color(for: "a"), .custom("#FF8800"))
+        let tint = Labels(defaults: defaults).color(for: "a")
+        XCTAssertEqual(tint, .custom("#FF8800"))
+        XCTAssertEqual(tint?.rgb?.r, 255)
+        XCTAssertEqual(tint?.rgb?.g, 136)
+        XCTAssertEqual(tint?.rgb?.b, 0)
+    }
+
+    // T-17
+    func testInvalidCustomColorIsRejected() {
+        let labels = Labels(defaults: defaults)
+        labels.toggleColor("a", .green)
+        for bad in ["orange", "#12345", "#GGGGGG", "FF8800", ""] {
+            labels.setCustomColor("a", hex: bad)
+        }
+        XCTAssertEqual(labels.color(for: "a"), .swatch(.green))
+    }
+
+    // T-18
+    func testUnknownStoredColorKeepsTheName() {
+        let json = #"{"a":{"name":"Mail","color":"ultraviolet"}}"#
+        defaults.set(Data(json.utf8), forKey: "labels")
+        let labels = Labels(defaults: defaults)
+        XCTAssertEqual(labels.name(for: d1), "Mail")
+        XCTAssertNil(labels.color(for: "a"))
     }
 
     // T-15

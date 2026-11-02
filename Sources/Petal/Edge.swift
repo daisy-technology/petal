@@ -13,28 +13,28 @@ final class EdgeController {
     private var windows: [String: (window: NSWindow, display: String)] = [:]
 
     func sync(snapshot: SpacesSnapshot, labels: Labels, enabled: Bool) {
-        var wanted: [String: Swatch] = [:]
+        var wanted: [String: Tint] = [:]
         if enabled {
             for desktop in snapshot.desktops {
-                if let swatch = labels.color(for: desktop.uuid) { wanted[desktop.uuid] = swatch }
+                if let tint = labels.color(for: desktop.uuid) { wanted[desktop.uuid] = tint }
             }
         }
 
         for (uuid, entry) in windows {
-            guard let swatch = wanted[uuid] else {
+            guard let tint = wanted[uuid] else {
                 entry.window.orderOut(nil)
                 windows[uuid] = nil
                 continue
             }
-            (entry.window.contentView as? EdgeView)?.color = swatch.nsColor
+            (entry.window.contentView as? EdgeView)?.color = tint.nsColor
             if let screen = Self.screen(for: entry.display) {
                 entry.window.setFrame(Self.frame(on: screen), display: true)
             }
         }
 
         for (display, uuid) in snapshot.current where windows[uuid] == nil {
-            guard let swatch = wanted[uuid], let screen = Self.screen(for: display) else { continue }
-            windows[uuid] = (Self.makeWindow(on: screen, color: swatch.nsColor), display)
+            guard let tint = wanted[uuid], let screen = Self.screen(for: display) else { continue }
+            windows[uuid] = (Self.makeWindow(on: screen, color: tint.nsColor), display)
         }
     }
 

@@ -20,6 +20,34 @@ extension Swatch {
     var color: Color { Color(nsColor: nsColor) }
 }
 
+extension Tint {
+    /// Saturation and brightness of colors picked on the hue strip.
+    static let stripSaturation = 0.75
+    static let stripBrightness = 0.95
+
+    var nsColor: NSColor {
+        switch self {
+        case .swatch(let swatch):
+            return swatch.nsColor
+        case .custom:
+            let c = rgb ?? (0, 0, 0)
+            return NSColor(srgbRed: CGFloat(c.r) / 255, green: CGFloat(c.g) / 255, blue: CGFloat(c.b) / 255, alpha: 1)
+        }
+    }
+
+    var color: Color { Color(nsColor: nsColor) }
+
+    /// Where this color sits on the hue strip (0...1).
+    var hue: Double { Double(nsColor.usingColorSpace(.sRGB)?.hueComponent ?? 0) }
+
+    static func hex(hue: Double) -> String {
+        let c = NSColor(hue: hue, saturation: stripSaturation, brightness: stripBrightness, alpha: 1)
+            .usingColorSpace(.sRGB)!
+        func byte(_ v: CGFloat) -> Int { Int((v * 255).rounded()) }
+        return String(format: "#%02X%02X%02X", byte(c.redComponent), byte(c.greenComponent), byte(c.blueComponent))
+    }
+}
+
 @MainActor
 final class AppModel: ObservableObject {
     @Published private(set) var snapshot = SpacesSnapshot()
@@ -52,7 +80,7 @@ final class AppModel: ObservableObject {
 
     var active: Desktop? { snapshot.desktop(id64: activeID) }
     var title: String { active.map(labels.name(for:)) ?? "Desktop" }
-    var activeColor: Swatch? { active.flatMap { labels.color(for: $0.uuid) } }
+    var activeColor: Tint? { active.flatMap { labels.color(for: $0.uuid) } }
 
     /// Desktops grouped by display, in Mission Control order.
     var displays: [(id: String, desktops: [Desktop])] {
@@ -81,6 +109,12 @@ final class AppModel: ObservableObject {
     func toggleColor(_ desktop: Desktop, _ swatch: Swatch) {
         objectWillChange.send()
         labels.toggleColor(desktop.uuid, swatch)
+        syncEdges()
+    }
+
+    func setCustomColor(_ desktop: Desktop, hue: Double) {
+        objectWillChange.send()
+        labels.setCustomColor(desktop.uuid, hex: Tint.hex(hue: hue))
         syncEdges()
     }
 
