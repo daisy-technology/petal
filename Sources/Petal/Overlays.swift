@@ -12,11 +12,44 @@ import SwiftUI
 final class OverlayController {
     private var windows: [String: (window: NSWindow, display: String)] = [:]
 
-    var level: NSWindow.Level {
-        didSet { for entry in windows.values { entry.window.level = level } }
-    }
+    private(set) var level: NSWindow.Level
 
     init(level: NSWindow.Level) { self.level = level }
+
+    /// Moves every window to `newLevel` with a fade instead of a jump: going up it
+    /// fades in over the windows; coming down it fades out first, then settles back.
+    func move(to newLevel: NSWindow.Level) {
+        guard newLevel != level else { return }
+        let rising = newLevel > level
+        level = newLevel
+        let all = windows.values.map(\.window)
+
+        func settle() {
+            all.forEach { $0.level = newLevel }
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = rising ? 0.35 : 0.2
+                context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                all.forEach { $0.animator().alphaValue = 1 }
+            }
+        }
+
+        if rising {
+            all.forEach { $0.alphaValue = 0 }
+            settle()
+        } else {
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.12
+                context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+                all.forEach { $0.animator().alphaValue = 0 }
+            }, completionHandler: { [weak self] in
+                MainActor.assumeIsolated {
+                    // Mission Control may have opened again during the fade.
+                    guard self?.level == newLevel else { return }
+                    settle()
+                }
+            })
+        }
+    }
 
     /// `wanted` maps a Desktop's uuid to what its window shows; Desktops left out lose their window.
     func sync(_ wanted: [String: AnyView], current: [String: String]) {
@@ -84,8 +117,8 @@ final class MissionControlWatcher {
     private(set) var isOpen = false
 
     init(onChange: @escaping @MainActor (Bool) -> Void) {
-        // ponytail: polls 4 times a second; CGWindowList is cheap and there's no notification to use instead.
-        timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+        // ponytail: polls about 7 times a second; CGWindowList is cheap and there's no notification to use instead.
+        timer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self else { return }
                 let open = Self.dockCoversScreen()

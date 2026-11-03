@@ -166,6 +166,8 @@ h1 { font-size: clamp(2.4rem, 7vw, 4.25rem); line-height: 1.04; letter-spacing: 
 .desktop.no-name .wall-name { opacity: 0; }
 /* In Mission Control the name comes in front of the windows. */
 .desktop.mc .wall-name { z-index: 3; opacity: 0.8; }
+.desktop.mc .wall-name { animation: name-rise 350ms ease-out 250ms both; }
+@keyframes name-rise { from { opacity: 0; transform: translateY(-50%) scale(0.96); } }
 .s0 { background: url(wallpaper.svg) center bottom / cover no-repeat, radial-gradient(110% 90% at 15% 10%, #5d7cf0 0%, transparent 55%), radial-gradient(80% 70% at 100% 100%, #f2a65a 0%, transparent 60%), linear-gradient(160deg, #23307a, #0b1240 70%); }
 .s1 { background: url(wallpaper.svg) center bottom / cover no-repeat, radial-gradient(110% 90% at 85% 10%, #4fa3f7 0%, transparent 55%), radial-gradient(80% 70% at 0% 100%, #7a5cf0 0%, transparent 60%), linear-gradient(200deg, #1f3a8a, #0a1440 70%); }
 .s2 { background: url(wallpaper.svg) center bottom / cover no-repeat, radial-gradient(110% 90% at 50% 0%, #3fbf9a 0%, transparent 55%), radial-gradient(80% 70% at 100% 100%, #2a6fd6 0%, transparent 60%), linear-gradient(170deg, #143c5c, #071a33 70%); }

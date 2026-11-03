@@ -91,7 +91,7 @@ final class AppModel: ObservableObject {
         // On the wallpaper the name hides behind big windows; while Mission Control
         // is open it sits above them, so every Desktop shows which one it is.
         missionControl = MissionControlWatcher { [weak self] open in
-            self?.names.level = open ? .floating : .wallpaper
+            self?.names.move(to: open ? .floating : .wallpaper)
         }
         refresh()
     }
