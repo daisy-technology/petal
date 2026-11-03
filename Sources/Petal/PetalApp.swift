@@ -85,6 +85,9 @@ struct MenuView: View {
                 .padding(.horizontal, Metrics.inset)
                 .help("Name size. Hold the slider to preview it over your windows.")
 
+                SettingRow(title: "Show name while ⌘-Tab", isOn: $model.nameInAppSwitcher)
+                    .help("Off: the name comes over your windows only in Mission Control.")
+
                 HStack {
                     Text("Transition")
                     Spacer()

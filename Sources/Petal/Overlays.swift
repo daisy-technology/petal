@@ -120,11 +120,14 @@ final class OverlayController {
 }
 
 /// Tells when Mission Control is open. There's no API for it, but while it is,
-/// the Dock shows a full-screen window at layer 20, and at no other time.
+/// the Dock shows a full-screen window at layer 20. The ⌘-Tab app switcher shows
+/// the same window, so ⌘ being held when it appears marks it as the switcher.
 @MainActor
 final class MissionControlWatcher {
     private var timer: Timer?
     private(set) var isOpen = false
+    /// True when the window that's up belongs to the ⌘-Tab switcher, not Mission Control.
+    private(set) var isAppSwitcher = false
 
     init(onChange: @escaping @MainActor (Bool) -> Void) {
         // ponytail: polls about 7 times a second; CGWindowList is cheap and there's no notification to use instead.
@@ -134,6 +137,8 @@ final class MissionControlWatcher {
                 let open = Self.dockCoversScreen()
                 if open != self.isOpen {
                     self.isOpen = open
+                    // ponytail: ⌘ held while opening Mission Control by its own key reads as the switcher.
+                    self.isAppSwitcher = open && CGEventSource.flagsState(.combinedSessionState).contains(.maskCommand)
                     onChange(open)
                 }
             }
