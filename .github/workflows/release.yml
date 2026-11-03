@@ -20,5 +20,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           shasum -a 256 dist/Petal.zip | tee dist/Petal.zip.sha256
+          # A tag with a suffix (v0.1.0-beta.1) is published as a pre-release.
+          pre=""; [[ "$GITHUB_REF_NAME" == *-* ]] && pre="--prerelease"
           gh release create "$GITHUB_REF_NAME" dist/Petal.zip dist/Petal.zip.sha256 \
-            --title "Petal ${GITHUB_REF_NAME}" --generate-notes --verify-tag
+            --title "Petal ${GITHUB_REF_NAME}" --generate-notes --verify-tag $pre

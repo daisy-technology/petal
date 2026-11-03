@@ -2,11 +2,11 @@
 
 <h1 align="center">Petal</h1>
 
-<p align="center">Name and color your Mac Desktops from the menu bar.</p>
+<p align="center">Name and color your Mac Desktops from the menu bar. Now in beta.</p>
 
 <p align="center">
   <a href="https://daisy-technology.github.io/petal/">Website</a> ·
-  <a href="https://github.com/daisy-technology/petal/releases/latest/download/Petal.zip">Download</a> ·
+  <a href="https://github.com/daisy-technology/petal/releases/download/v0.1.0-beta.1/Petal.zip">Download</a> ·
   <a href="https://github.com/daisy-technology/petal/actions/workflows/ci.yml"><img src="https://github.com/daisy-technology/petal/actions/workflows/ci.yml/badge.svg?branch=dev" alt="CI"></a>
 </p>
 
@@ -23,7 +23,7 @@ Petal needs no account and makes no network requests. Naming, colors and orderin
 
 ## Install
 
-Download [Petal.zip](https://github.com/daisy-technology/petal/releases/latest/download/Petal.zip), unzip it and move Petal to Applications. It runs on macOS 14 or later, on Apple silicon and Intel.
+Download [Petal.zip](https://github.com/daisy-technology/petal/releases/download/v0.1.0-beta.1/Petal.zip), unzip it and move Petal to Applications. This is a beta: please [report anything odd](https://github.com/daisy-technology/petal/issues). It runs on macOS 14 or later, on Apple silicon and Intel.
 
 Petal isn't notarized yet, so macOS blocks the first launch. Open it once, then go to System Settings → Privacy & Security and click Open Anyway. You can also clear the quarantine flag in Terminal:
 
