@@ -84,6 +84,7 @@ final class AppModel: ObservableObject {
     }
     private var previewEnd: DispatchWorkItem?
     private let stage = NameStage()
+    private let tip = MissionControlTip()
     /// True while the size slider is held: the name comes in front of the windows so you see it change.
     private var previewingName = false
 
@@ -112,7 +113,15 @@ final class AppModel: ObservableObject {
         // On the wallpaper the name hides behind big windows; while Mission Control
         // is open it sits above them, so every Desktop shows which one it is.
         names.onRise = { [stage] style, seconds in stage.play(style, duration: seconds) }
-        missionControl = MissionControlWatcher { [weak self] _ in self?.placeNames() }
+        missionControl = MissionControlWatcher { [weak self] open in
+            guard let self else { return }
+            self.placeNames()
+            if !open {
+                self.tip.hide()
+                // Desktops may have been dragged into a new order.
+                self.refresh()
+            }
+        }
         refresh()
     }
 
@@ -124,7 +133,7 @@ final class AppModel: ObservableObject {
     var displays: [(id: String, desktops: [Desktop])] {
         var order: [String] = []
         var groups: [String: [Desktop]] = [:]
-        for desktop in labels.ordered(snapshot.desktops) {
+        for desktop in snapshot.desktops {
             if groups[desktop.display] == nil { order.append(desktop.display) }
             groups[desktop.display, default: []].append(desktop)
         }
@@ -157,9 +166,11 @@ final class AppModel: ObservableObject {
         syncOverlays()
     }
 
-    func move(_ desktop: Desktop, to index: Int) {
-        objectWillChange.send()
-        labels.move(desktop.uuid, to: index, within: snapshot.desktops.filter { $0.display == desktop.display })
+    /// macOS has no way for an app to move a Desktop, so Petal opens Mission Control
+    /// with a tip; you drag the Desktop in its top bar and Petal's list follows when it closes.
+    func reorderInMissionControl() {
+        tip.show()
+        NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Mission Control.app"))
     }
 
     /// Starts switching to `desktop`. Returns true when the menu should close.

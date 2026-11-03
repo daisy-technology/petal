@@ -205,7 +205,7 @@ final class LabelsTests: XCTestCase {
     }
 }
 
-final class OrderTests: XCTestCase {
+final class LabelStoreTests: XCTestCase {
     private var suite: String!
     private var defaults: UserDefaults!
 
@@ -216,10 +216,6 @@ final class OrderTests: XCTestCase {
 
     override func tearDown() {
         defaults.removePersistentDomain(forName: suite)
-    }
-
-    private func desktops(_ display: String, _ uuids: [String], from id: Int = 1) -> [Desktop] {
-        uuids.enumerated().map { Desktop(uuid: $1, id64: id + $0, display: display, number: $0 + 1) }
     }
 
     // T-19
@@ -233,35 +229,10 @@ final class OrderTests: XCTestCase {
     }
 
     // T-20
-    func testDefaultOrderIsMissionControlOrder() {
-        let all = desktops("D1", ["a", "b", "c"])
-        XCTAssertEqual(Labels(defaults: defaults).ordered(all).map(\.uuid), ["a", "b", "c"])
-    }
-
-    // T-21
-    func testMovePersistsAndLeavesOtherDisplayAlone() {
-        let d1 = desktops("D1", ["a", "b", "c"])
-        let d2 = desktops("D2", ["x", "y"], from: 10)
-        let labels = Labels(defaults: defaults)
-        labels.move("y", to: 0, within: d2)
-        labels.move("c", to: 0, within: d1)
-        let again = Labels(defaults: defaults)
-        XCTAssertEqual(again.ordered(d1).map(\.uuid), ["c", "a", "b"])
-        XCTAssertEqual(again.ordered(d2).map(\.uuid), ["y", "x"])
-        labels.move("a", to: 99, within: d1)
-        XCTAssertEqual(labels.ordered(d1).map(\.uuid), ["c", "b", "a"])
-    }
-
-    // T-22
-    func testNewDesktopsGoLastAndRemovedOnesArePruned() {
-        let labels = Labels(defaults: defaults)
-        labels.move("c", to: 0, within: desktops("D1", ["a", "b", "c"]))
-        let now = desktops("D1", ["a", "c", "n"])
-        XCTAssertEqual(labels.ordered(now).map(\.uuid), ["c", "a", "n"])
-        labels.prune(keeping: Set(now.map(\.uuid)))
-        XCTAssertFalse(labels.order.contains("b"))
-        labels.prune(keeping: [])
-        XCTAssertFalse(labels.order.isEmpty)
+    func testOldMenuOrderIsDropped() {
+        defaults.set(["c", "a"], forKey: "order")
+        _ = Labels(defaults: defaults)
+        XCTAssertNil(defaults.object(forKey: "order"))
     }
 }
 
