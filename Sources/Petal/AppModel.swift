@@ -76,6 +76,14 @@ final class AppModel: ObservableObject {
             syncOverlays()
         }
     }
+    @Published var nameTransition: NameTransition {
+        didSet { UserDefaults.standard.set(nameTransition.rawValue, forKey: "nameTransition") }
+    }
+    @Published var nameTransitionDuration: Double {
+        didSet { UserDefaults.standard.set(nameTransitionDuration, forKey: "nameTransitionDuration") }
+    }
+    private var previewEnd: DispatchWorkItem?
+    private let stage = NameStage()
     /// True while the size slider is held: the name comes in front of the windows so you see it change.
     private var previewingName = false
 
@@ -90,6 +98,8 @@ final class AppModel: ObservableObject {
         showName = UserDefaults.standard.object(forKey: "showName") as? Bool ?? true
         let size = UserDefaults.standard.double(forKey: "nameSize")
         nameSize = NameOverlay.sizes.contains(size) ? size : NameOverlay.defaultSize
+        nameTransition = NameTransition.load(UserDefaults.standard.string(forKey: "nameTransition"))
+        nameTransitionDuration = NameTransition.clampDuration(UserDefaults.standard.double(forKey: "nameTransitionDuration"))
         let onChange: @Sendable (Notification) -> Void = { [weak self] _ in
             MainActor.assumeIsolated { self?.refresh() }
         }
@@ -101,6 +111,7 @@ final class AppModel: ObservableObject {
         ]
         // On the wallpaper the name hides behind big windows; while Mission Control
         // is open it sits above them, so every Desktop shows which one it is.
+        names.onRise = { [stage] style, seconds in stage.play(style, duration: seconds) }
         missionControl = MissionControlWatcher { [weak self] _ in self?.placeNames() }
         refresh()
     }
@@ -192,12 +203,29 @@ final class AppModel: ObservableObject {
     }
 
     func previewName(_ on: Bool) {
+        previewEnd?.cancel()
         previewingName = on
         placeNames()
     }
 
+    /// Plays the chosen transition once: the name comes in front, holds, then goes back.
+    func playTransitionPreview() {
+        previewEnd?.cancel()
+        previewingName = false
+        placeNames()
+        // Let it settle on the wallpaper before it rises again.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+            guard let self else { return }
+            self.previewName(true)
+            let end = DispatchWorkItem { [weak self] in self?.previewName(false) }
+            self.previewEnd = end
+            DispatchQueue.main.asyncAfter(deadline: .now() + self.nameTransitionDuration + 0.8, execute: end)
+        }
+    }
+
     private func placeNames() {
-        names.move(to: previewingName || missionControl?.isOpen == true ? .floating : .wallpaper)
+        names.move(to: previewingName || missionControl?.isOpen == true ? .floating : .wallpaper,
+                   transition: nameTransition, duration: nameTransitionDuration)
     }
 
     private func syncOverlays() {
@@ -206,7 +234,7 @@ final class AppModel: ObservableObject {
         for desktop in snapshot.desktops {
             let tint = labels.color(for: desktop.uuid)
             if showEdge, let tint { edge[desktop.uuid] = AnyView(EdgeOverlay(color: tint.color)) }
-            if showName { name[desktop.uuid] = AnyView(NameOverlay(name: labels.name(for: desktop), color: tint?.color, size: nameSize)) }
+            if showName { name[desktop.uuid] = AnyView(NameOverlay(name: labels.name(for: desktop), color: tint?.color, size: nameSize, stage: stage)) }
         }
         edges.sync(edge, current: snapshot.current)
         names.sync(name, current: snapshot.current)

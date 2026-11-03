@@ -84,6 +84,37 @@ struct MenuView: View {
                 .frame(height: Metrics.rowHeight - 4)
                 .padding(.horizontal, Metrics.inset)
                 .help("Name size. Hold the slider to preview it over your windows.")
+
+                HStack {
+                    Text("Transition")
+                    Spacer()
+                    Picker("Transition", selection: $model.nameTransition) {
+                        ForEach(NameTransition.allCases) { Text($0.title).tag($0) }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .controlSize(.small)
+                    .fixedSize()
+                }
+                .frame(height: Metrics.rowHeight - 4)
+                .padding(.horizontal, Metrics.inset)
+                .onChange(of: model.nameTransition) { _, _ in model.playTransitionPreview() }
+
+                if model.nameTransition != .none {
+                    HStack(spacing: 8) {
+                        Text("Duration")
+                        Slider(value: $model.nameTransitionDuration, in: NameTransition.durations, step: 0.05) { editing in
+                            if !editing { model.playTransitionPreview() }
+                        }
+                        .controlSize(.mini)
+                        .accessibilityLabel("Transition duration")
+                        Text(String(format: "%.2f s", model.nameTransitionDuration))
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(height: Metrics.rowHeight - 4)
+                    .padding(.horizontal, Metrics.inset)
+                }
             }
             SettingRow(title: "Show color edge", isOn: $model.showEdge)
             SettingRow(title: "Launch at login", isOn: Binding(

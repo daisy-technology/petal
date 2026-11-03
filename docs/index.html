@@ -110,6 +110,12 @@
           <hr>
           <button class="setting" role="switch" aria-checked="true" data-pref="name">Show name on desktop<span class="toggle"></span></button>
           <label class="size-row"><span aria-hidden="true">A</span><input type="range" id="name-size" min="60" max="320" value="160" aria-label="Name size"><span aria-hidden="true" class="big">A</span></label>
+          <label class="pref-row">Transition
+            <select id="name-transition" aria-label="Transition"><option value="name-fade">Fade</option><option value="name-zoom">Zoom</option><option value="name-slide">Slide</option><option value="none">None</option></select>
+          </label>
+          <label class="pref-row" id="duration-row">Duration
+            <input type="range" id="name-duration" min="0.1" max="1" step="0.05" value="0.35" aria-label="Transition duration"><output id="duration-out">0.35 s</output>
+          </label>
           <button class="setting" role="switch" aria-checked="true" data-pref="edge">Show color edge<span class="toggle"></span></button>
           <button class="setting" role="switch" aria-checked="true" data-pref="login">Launch at login<span class="toggle"></span></button>
           <hr>

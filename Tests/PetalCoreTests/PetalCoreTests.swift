@@ -341,3 +341,15 @@ final class SwitchingTests: XCTestCase {
         XCTAssertEqual(bare.desktops[1], Shortcut(keyCode: 18, modifiers: ctrl))
     }
 }
+
+final class NameTransitionTests: XCTestCase {
+    // T-28
+    func testLoadAndClamp() {
+        XCTAssertEqual(NameTransition.load("zoom"), .zoom)
+        XCTAssertEqual(NameTransition.load("wobble"), .fade)
+        XCTAssertEqual(NameTransition.load(nil), .fade)
+        XCTAssertEqual(NameTransition.clampDuration(0), NameTransition.defaultDuration)
+        XCTAssertEqual(NameTransition.clampDuration(0.5), 0.5)
+        XCTAssertEqual(NameTransition.clampDuration(5), NameTransition.defaultDuration)
+    }
+}

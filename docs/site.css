@@ -164,13 +164,17 @@ h1 { font-size: clamp(2.4rem, 7vw, 4.25rem); line-height: 1.04; letter-spacing: 
   transition: color 250ms ease, opacity 250ms ease;
 }
 .desktop.no-name .wall-name { opacity: 0; }
-.desktop.no-name .size-row { display: none; }
+.desktop.no-name :is(.size-row, .pref-row) { display: none; }
 /* Holding the size slider brings the name in front so you see it change, as in the app. */
 .desktop.previewing .wall-name { z-index: 3; opacity: 0.8; }
 /* In Mission Control the name comes in front of the windows. */
 .desktop.mc .wall-name { z-index: 3; opacity: 0.8; }
-.desktop.mc .wall-name { animation: name-rise 350ms ease-out 250ms both; }
-@keyframes name-rise { from { opacity: 0; transform: translateY(-50%) scale(0.96); } }
+/* The chosen transition (Fade, Zoom, Slide or None) and duration, as in the app's menu. */
+.desktop.mc .wall-name, .desktop.previewing .wall-name { animation: var(--name-anim, name-fade) var(--name-dur, 350ms) ease-out both; }
+.desktop.mc .wall-name { animation-delay: 250ms; }
+@keyframes name-fade { from { opacity: 0; } }
+@keyframes name-zoom { from { opacity: 0; transform: translateY(-50%) scale(0.92); } }
+@keyframes name-slide { from { opacity: 0; transform: translateY(calc(-50% + 3cqw)); } }
 .s0 { background: url(wallpaper.svg) center bottom / cover no-repeat, radial-gradient(110% 90% at 15% 10%, #5d7cf0 0%, transparent 55%), radial-gradient(80% 70% at 100% 100%, #f2a65a 0%, transparent 60%), linear-gradient(160deg, #23307a, #0b1240 70%); }
 .s1 { background: url(wallpaper.svg) center bottom / cover no-repeat, radial-gradient(110% 90% at 85% 10%, #4fa3f7 0%, transparent 55%), radial-gradient(80% 70% at 0% 100%, #7a5cf0 0%, transparent 60%), linear-gradient(200deg, #1f3a8a, #0a1440 70%); }
 .s2 { background: url(wallpaper.svg) center bottom / cover no-repeat, radial-gradient(110% 90% at 50% 0%, #3fbf9a 0%, transparent 55%), radial-gradient(80% 70% at 100% 100%, #2a6fd6 0%, transparent 60%), linear-gradient(170deg, #143c5c, #071a33 70%); }
@@ -288,6 +292,11 @@ h1 { font-size: clamp(2.4rem, 7vw, 4.25rem); line-height: 1.04; letter-spacing: 
 .size-row span { font-size: 0.75em; font-weight: 600; }
 .size-row .big { font-size: 1.1em; }
 .size-row input { flex: 1; min-width: 0; accent-color: var(--c-blue); }
+.pref-row { display: flex; align-items: center; gap: 0.5em; height: 1.9em; padding: 0 0.6em; }
+.pref-row select { margin-left: auto; font: inherit; font-size: 0.9em; color: inherit; background: var(--hover); border: 0; border-radius: 0.35em; padding: 0.1em 0.3em; }
+.pref-row input { flex: 1; min-width: 0; accent-color: var(--c-blue); }
+.pref-row output { font-size: 0.85em; color: var(--win-muted); font-variant-numeric: tabular-nums; }
+.desktop.no-duration #duration-row { display: none; }
 .hint { margin: 0; padding: 0 0.6em 0.2em; font-size: 0.82em; color: var(--win-muted); }
 
 /* Windows / Linux: coming soon */
@@ -346,4 +355,9 @@ footer nav { display: flex; gap: 1.25rem; }
 @media (prefers-reduced-transparency: reduce) {
   .petal-menu { background: var(--win); -webkit-backdrop-filter: none; backdrop-filter: none; }
   .menubar, .dock { background: rgba(20, 24, 60, 0.92); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+
+/* On a phone-sized demo the menu would run past the desktop; the hint goes first. */
+@container (max-width: 520px) {
+  .hint, .petal-menu hr:last-of-type { display: none; }
 }

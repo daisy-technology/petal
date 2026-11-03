@@ -157,6 +157,29 @@
   sizeInput.addEventListener('pointerdown', () => desk.classList.add('previewing'));
   ['pointerup', 'pointercancel', 'blur'].forEach((type) => sizeInput.addEventListener(type, () => desk.classList.remove('previewing')));
 
+  // Transition and duration: changing either plays it once, like the app's live preview.
+  const transitionInput = document.getElementById('name-transition');
+  const durationInput = document.getElementById('name-duration');
+  const durationOut = document.getElementById('duration-out');
+  let previewTimer;
+  function previewTransition() {
+    clearTimeout(previewTimer);
+    desk.classList.remove('previewing');
+    void desk.offsetWidth; // restart the animation
+    desk.classList.add('previewing');
+    previewTimer = setTimeout(() => desk.classList.remove('previewing'), Number(durationInput.value) * 1000 + 800);
+  }
+  transitionInput.addEventListener('change', () => {
+    desk.style.setProperty('--name-anim', transitionInput.value);
+    desk.classList.toggle('no-duration', transitionInput.value === 'none');
+    previewTransition();
+  });
+  durationInput.addEventListener('input', () => {
+    desk.style.setProperty('--name-dur', `${durationInput.value}s`);
+    durationOut.textContent = `${Number(durationInput.value).toFixed(2)} s`;
+  });
+  durationInput.addEventListener('change', previewTransition);
+
   desk.querySelectorAll('.setting').forEach((button) => button.addEventListener('click', () => {
     const key = button.dataset.pref;
     prefs[key] = !prefs[key];

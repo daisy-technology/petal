@@ -13,21 +13,31 @@ final class OverlayController {
     private var windows: [String: (window: NSWindow, display: String)] = [:]
 
     private(set) var level: NSWindow.Level
+    /// Called as the windows start coming up, so their content can play its own motion.
+    var onRise: ((NameTransition, Double) -> Void)?
 
     init(level: NSWindow.Level) { self.level = level }
 
-    /// Moves every window to `newLevel` with a fade instead of a jump: going up it
-    /// fades in over the windows; coming down it fades out first, then settles back.
-    func move(to newLevel: NSWindow.Level) {
+    /// Moves every window to `newLevel`. Going up, the name comes in with `transition`
+    /// over `duration`; coming down it fades out in half that, then settles back.
+    func move(to newLevel: NSWindow.Level, transition: NameTransition, duration: Double) {
         guard newLevel != level else { return }
         let rising = newLevel > level
         level = newLevel
         let all = windows.values.map(\.window)
 
-        func settle() {
+        var style = transition
+        if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion, style == .zoom || style == .slide { style = .fade }
+        if style == .none {
+            all.forEach { $0.level = newLevel; $0.alphaValue = 1 }
+            return
+        }
+
+        func settle(_ seconds: Double) {
             all.forEach { $0.level = newLevel }
+            if rising { onRise?(style, seconds) }
             NSAnimationContext.runAnimationGroup { context in
-                context.duration = rising ? 0.35 : 0.2
+                context.duration = seconds
                 context.timingFunction = CAMediaTimingFunction(name: .easeOut)
                 all.forEach { $0.animator().alphaValue = 1 }
             }
@@ -35,17 +45,17 @@ final class OverlayController {
 
         if rising {
             all.forEach { $0.alphaValue = 0 }
-            settle()
+            settle(duration)
         } else {
             NSAnimationContext.runAnimationGroup({ context in
-                context.duration = 0.12
+                context.duration = duration / 2
                 context.timingFunction = CAMediaTimingFunction(name: .easeIn)
                 all.forEach { $0.animator().alphaValue = 0 }
             }, completionHandler: { [weak self] in
                 MainActor.assumeIsolated {
                     // Mission Control may have opened again during the fade.
                     guard self?.level == newLevel else { return }
-                    settle()
+                    settle(duration / 2)
                 }
             })
         }
@@ -156,6 +166,24 @@ struct EdgeOverlay: View {
 }
 
 /// The Desktop's name, large and faint, so Mission Control shows which Desktop is which.
+/// Drives Zoom and Slide inside every name view at once.
+@MainActor
+final class NameStage: ObservableObject {
+    @Published private(set) var settled = true
+    private(set) var style = NameTransition.fade
+
+    /// Jumps to the start pose, then eases into place over `duration`.
+    func play(_ style: NameTransition, duration: Double) {
+        self.style = style
+        var start = Transaction()
+        start.disablesAnimations = true
+        withTransaction(start) { settled = false }
+        DispatchQueue.main.async {
+            withAnimation(.easeOut(duration: duration)) { self.settled = true }
+        }
+    }
+}
+
 struct NameOverlay: View {
     /// Point sizes the menu's slider moves between.
     static let sizes: ClosedRange<Double> = 60...320
@@ -164,6 +192,7 @@ struct NameOverlay: View {
     let name: String
     let color: Color?
     let size: Double
+    @ObservedObject var stage: NameStage
 
     var body: some View {
         Text(name)
@@ -173,6 +202,9 @@ struct NameOverlay: View {
             .foregroundStyle((color ?? .white).opacity(0.65))
             .shadow(color: .black.opacity(0.35), radius: 14, y: 2)
             .padding(.horizontal, 80)
+            // Zoom grows it from 92%; Slide lifts it 40 pt into place.
+            .scaleEffect(stage.settled || stage.style != .zoom ? 1 : 0.92)
+            .offset(y: stage.settled || stage.style != .slide ? 0 : 40)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
