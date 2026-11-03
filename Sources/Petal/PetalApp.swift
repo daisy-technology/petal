@@ -70,6 +70,7 @@ struct MenuView: View {
 
             Divider().padding(.vertical, 6)
 
+            SettingRow(title: "Show name on desktop", isOn: $model.showName)
             SettingRow(title: "Show color edge", isOn: $model.showEdge)
             SettingRow(title: "Launch at login", isOn: Binding(
                 get: { model.launchAtLogin },
@@ -88,6 +89,8 @@ struct MenuView: View {
         }
         .padding(6)
         .frame(width: 280)
+        .fixedSize(horizontal: false, vertical: true)
+        .background(FitWindow())
         .onAppear {
             model.refresh()
             model.recheckAccess()
@@ -381,6 +384,36 @@ struct DesktopRow: View {
         guard editing else { return }
         model.rename(desktop, to: draft)
         editing = false
+    }
+}
+
+/// MenuBarExtra grows its window when the menu gets taller but never shrinks it,
+/// which leaves a see-through band above the rows. This sizes the window to the
+/// menu every time the menu's height changes, keeping the top edge under the menu bar.
+struct FitWindow: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { Probe() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    final class Probe: NSView {
+        override func setFrameSize(_ newSize: NSSize) {
+            super.setFrameSize(newSize)
+            DispatchQueue.main.async { [weak self] in self?.fit() }
+        }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            fit()
+        }
+
+        private func fit() {
+            guard let window, let content = window.contentView else { return }
+            let height = frame.height
+            guard height > 0, abs(content.frame.height - height) > 0.5 else { return }
+            var rect = window.frame
+            rect.origin.y += rect.height - height
+            rect.size.height = height
+            window.setFrame(rect, display: true)
+        }
     }
 }
 

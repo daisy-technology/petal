@@ -60,16 +60,24 @@ final class AppModel: ObservableObject {
     @Published var showEdge: Bool {
         didSet {
             UserDefaults.standard.set(showEdge, forKey: "showEdge")
-            syncEdges()
+            syncOverlays()
+        }
+    }
+    @Published var showName: Bool {
+        didSet {
+            UserDefaults.standard.set(showName, forKey: "showName")
+            syncOverlays()
         }
     }
 
     let labels = Labels()
-    private let edges = EdgeController()
+    private let edges = OverlayController(level: .floating)
+    private let names = OverlayController(level: .wallpaper)
     private var observers: [NSObjectProtocol] = []
 
     init() {
         showEdge = UserDefaults.standard.object(forKey: "showEdge") as? Bool ?? true
+        showName = UserDefaults.standard.object(forKey: "showName") as? Bool ?? true
         let onChange: @Sendable (Notification) -> Void = { [weak self] _ in
             MainActor.assumeIsolated { self?.refresh() }
         }
@@ -102,24 +110,25 @@ final class AppModel: ObservableObject {
         snapshot = read.snapshot
         activeID = read.activeID
         labels.prune(keeping: Set(snapshot.desktops.map(\.uuid)))
-        syncEdges()
+        syncOverlays()
     }
 
     func rename(_ desktop: Desktop, to name: String) {
         objectWillChange.send()
         labels.rename(desktop.uuid, to: name)
+        syncOverlays()
     }
 
     func toggleColor(_ desktop: Desktop, _ swatch: Swatch) {
         objectWillChange.send()
         labels.toggleColor(desktop.uuid, swatch)
-        syncEdges()
+        syncOverlays()
     }
 
     func clearColor(_ desktop: Desktop) {
         objectWillChange.send()
         labels.clearColor(desktop.uuid)
-        syncEdges()
+        syncOverlays()
     }
 
     func move(_ desktop: Desktop, to index: Int) {
@@ -155,7 +164,7 @@ final class AppModel: ObservableObject {
     func setCustomColor(_ desktop: Desktop, hue: Double) {
         objectWillChange.send()
         labels.setCustomColor(desktop.uuid, hex: Tint.hex(hue: hue))
-        syncEdges()
+        syncOverlays()
     }
 
     func setLaunchAtLogin(_ on: Bool) {
@@ -167,7 +176,15 @@ final class AppModel: ObservableObject {
         launchAtLogin = SMAppService.mainApp.status == .enabled
     }
 
-    private func syncEdges() {
-        edges.sync(snapshot: snapshot, labels: labels, enabled: showEdge)
+    private func syncOverlays() {
+        var edge: [String: AnyView] = [:]
+        var name: [String: AnyView] = [:]
+        for desktop in snapshot.desktops {
+            let tint = labels.color(for: desktop.uuid)
+            if showEdge, let tint { edge[desktop.uuid] = AnyView(EdgeOverlay(color: tint.color)) }
+            if showName { name[desktop.uuid] = AnyView(NameOverlay(name: labels.name(for: desktop), color: tint?.color)) }
+        }
+        edges.sync(edge, current: snapshot.current)
+        names.sync(name, current: snapshot.current)
     }
 }

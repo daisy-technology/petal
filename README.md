@@ -17,7 +17,7 @@ macOS calls every Space "Desktop 1", "Desktop 2" and gives you no way to rename 
 - press and hold, then drag, to put the list in your own order
 - click the dot to pick one of eight colors, or drag along the hue strip for any color
 
-A colored Desktop also gets a thin edge in that color, which you can see in Mission Control too.
+Petal also writes each Desktop's name in large, faint letters on its wallpaper, behind your windows. Mission Control keeps its own "Desktop 1, 2" labels, but the name on the wallpaper shows which Desktop is which there. A colored Desktop also gets a thin edge in that color. You can turn either one off in the menu.
 
 Petal needs no account and makes no network requests. Naming, colors and ordering need no permissions. The first time you click a Desktop to switch to it, Petal asks for Accessibility access: macOS has no API for switching Desktops, so Petal presses your Mission Control shortcut (Control-arrow, or Control-number if you've turned those on) for you. Because Petal isn't notarized yet, macOS may ask you to allow it again after an update.
 
@@ -37,7 +37,7 @@ The labels under each Desktop in Mission Control stay "Desktop 1, 2, 3", and Mis
 
 Petal reads Spaces through the same private SkyLight calls that WhichSpace and Spaceman use, because macOS has no public API for them. A future macOS update could break that. If it does, Petal shows "Desktop" in the menu bar and keeps your saved names.
 
-Colored edges are created the first time you visit a Desktop after Petal starts, so a Desktop you haven't opened since login has no edge in Mission Control yet.
+Names on the wallpaper and colored edges are created the first time you visit a Desktop after Petal starts, so a Desktop you haven't opened since login doesn't show them in Mission Control yet.
 
 ## Build from source
 
