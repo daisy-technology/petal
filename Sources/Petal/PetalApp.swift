@@ -71,6 +71,20 @@ struct MenuView: View {
             Divider().padding(.vertical, 6)
 
             SettingRow(title: "Show name on desktop", isOn: $model.showName)
+            if model.showName {
+                HStack(spacing: 8) {
+                    Image(systemName: "textformat.size.smaller").foregroundStyle(.secondary)
+                    Slider(value: $model.nameSize, in: NameOverlay.sizes) { editing in
+                        model.previewName(editing)
+                    }
+                    .controlSize(.mini)
+                    .accessibilityLabel("Name size")
+                    Image(systemName: "textformat.size.larger").foregroundStyle(.secondary)
+                }
+                .frame(height: Metrics.rowHeight - 4)
+                .padding(.horizontal, Metrics.inset)
+                .help("Name size. Hold the slider to preview it over your windows.")
+            }
             SettingRow(title: "Show color edge", isOn: $model.showEdge)
             SettingRow(title: "Launch at login", isOn: Binding(
                 get: { model.launchAtLogin },

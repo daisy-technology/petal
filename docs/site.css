@@ -159,11 +159,14 @@ h1 { font-size: clamp(2.4rem, 7vw, 4.25rem); line-height: 1.04; letter-spacing: 
 .wall-name {
   position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%);
   padding: 0 6%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: clip;
-  font: 800 9cqw/1 ui-rounded, system-ui, sans-serif; letter-spacing: -0.02em;
+  font: 800 calc(9cqw * var(--name-scale, 1))/1 ui-rounded, system-ui, sans-serif; letter-spacing: -0.02em;
   color: var(--wall, #fff); opacity: 0.6; text-shadow: 0 0.3cqw 1.2cqw rgba(0, 0, 0, 0.35);
   transition: color 250ms ease, opacity 250ms ease;
 }
 .desktop.no-name .wall-name { opacity: 0; }
+.desktop.no-name .size-row { display: none; }
+/* Holding the size slider brings the name in front so you see it change, as in the app. */
+.desktop.previewing .wall-name { z-index: 3; opacity: 0.8; }
 /* In Mission Control the name comes in front of the windows. */
 .desktop.mc .wall-name { z-index: 3; opacity: 0.8; }
 .desktop.mc .wall-name { animation: name-rise 350ms ease-out 250ms both; }
@@ -281,6 +284,10 @@ h1 { font-size: clamp(2.4rem, 7vw, 4.25rem); line-height: 1.04; letter-spacing: 
 .toggle::after { content: ""; position: absolute; top: 0.1em; left: 0.1em; width: 0.9em; height: 0.9em; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1); }
 .setting[aria-checked="true"] .toggle { background: var(--c-blue); }
 .setting[aria-checked="true"] .toggle::after { transform: translateX(0.8em); }
+.size-row { display: flex; align-items: center; gap: 0.5em; height: 1.8em; padding: 0 0.6em; color: var(--win-muted); }
+.size-row span { font-size: 0.75em; font-weight: 600; }
+.size-row .big { font-size: 1.1em; }
+.size-row input { flex: 1; min-width: 0; accent-color: var(--c-blue); }
 .hint { margin: 0; padding: 0 0.6em 0.2em; font-size: 0.82em; color: var(--win-muted); }
 
 /* Windows / Linux: coming soon */

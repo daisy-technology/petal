@@ -17,7 +17,7 @@ macOS calls every Space "Desktop 1", "Desktop 2" and gives you no way to rename 
 - press and hold, then drag, to put the list in your own order
 - click the dot to pick one of eight colors, or drag along the hue strip for any color
 
-Petal also writes each Desktop's name in large, faint letters on its wallpaper, behind your windows. Mission Control keeps its own "Desktop 1, 2" labels, so while it's open Petal brings the name in front of the windows and you can see which Desktop is which, even one filled by a big app. A colored Desktop also gets a thin edge in that color. You can turn either one off in the menu.
+Petal also writes each Desktop's name in large, faint letters on its wallpaper, behind your windows. Mission Control keeps its own "Desktop 1, 2" labels, so while it's open Petal brings the name in front of the windows and you can see which Desktop is which, even one filled by a big app. A colored Desktop also gets a thin edge in that color. You can turn either one off in the menu, and a slider sets how big the name is. Hold the slider and the name comes in front of your windows so you see the size change as you drag.
 
 Petal needs no account and makes no network requests. Naming, colors and ordering need no permissions. The first time you click a Desktop to switch to it, Petal asks for Accessibility access: macOS has no API for switching Desktops, so Petal presses your Mission Control shortcut (Control-arrow, or Control-number if you've turned those on) for you. Because Petal isn't notarized yet, macOS may ask you to allow it again after an update.
 

@@ -152,6 +152,11 @@
     render();
   }));
 
+  const sizeInput = document.getElementById('name-size');
+  sizeInput.addEventListener('input', () => desk.style.setProperty('--name-scale', sizeInput.value / 160));
+  sizeInput.addEventListener('pointerdown', () => desk.classList.add('previewing'));
+  ['pointerup', 'pointercancel', 'blur'].forEach((type) => sizeInput.addEventListener(type, () => desk.classList.remove('previewing')));
+
   desk.querySelectorAll('.setting').forEach((button) => button.addEventListener('click', () => {
     const key = button.dataset.pref;
     prefs[key] = !prefs[key];

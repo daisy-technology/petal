@@ -70,6 +70,15 @@ final class AppModel: ObservableObject {
         }
     }
 
+    @Published var nameSize: Double {
+        didSet {
+            UserDefaults.standard.set(nameSize, forKey: "nameSize")
+            syncOverlays()
+        }
+    }
+    /// True while the size slider is held: the name comes in front of the windows so you see it change.
+    private var previewingName = false
+
     let labels = Labels()
     private let edges = OverlayController(level: .floating)
     private let names = OverlayController(level: .wallpaper)
@@ -79,6 +88,8 @@ final class AppModel: ObservableObject {
     init() {
         showEdge = UserDefaults.standard.object(forKey: "showEdge") as? Bool ?? true
         showName = UserDefaults.standard.object(forKey: "showName") as? Bool ?? true
+        let size = UserDefaults.standard.double(forKey: "nameSize")
+        nameSize = NameOverlay.sizes.contains(size) ? size : NameOverlay.defaultSize
         let onChange: @Sendable (Notification) -> Void = { [weak self] _ in
             MainActor.assumeIsolated { self?.refresh() }
         }
@@ -90,9 +101,7 @@ final class AppModel: ObservableObject {
         ]
         // On the wallpaper the name hides behind big windows; while Mission Control
         // is open it sits above them, so every Desktop shows which one it is.
-        missionControl = MissionControlWatcher { [weak self] open in
-            self?.names.move(to: open ? .floating : .wallpaper)
-        }
+        missionControl = MissionControlWatcher { [weak self] _ in self?.placeNames() }
         refresh()
     }
 
@@ -182,13 +191,22 @@ final class AppModel: ObservableObject {
         launchAtLogin = SMAppService.mainApp.status == .enabled
     }
 
+    func previewName(_ on: Bool) {
+        previewingName = on
+        placeNames()
+    }
+
+    private func placeNames() {
+        names.move(to: previewingName || missionControl?.isOpen == true ? .floating : .wallpaper)
+    }
+
     private func syncOverlays() {
         var edge: [String: AnyView] = [:]
         var name: [String: AnyView] = [:]
         for desktop in snapshot.desktops {
             let tint = labels.color(for: desktop.uuid)
             if showEdge, let tint { edge[desktop.uuid] = AnyView(EdgeOverlay(color: tint.color)) }
-            if showName { name[desktop.uuid] = AnyView(NameOverlay(name: labels.name(for: desktop), color: tint?.color)) }
+            if showName { name[desktop.uuid] = AnyView(NameOverlay(name: labels.name(for: desktop), color: tint?.color, size: nameSize)) }
         }
         edges.sync(edge, current: snapshot.current)
         names.sync(name, current: snapshot.current)

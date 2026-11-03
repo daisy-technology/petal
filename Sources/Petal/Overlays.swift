@@ -157,12 +157,17 @@ struct EdgeOverlay: View {
 
 /// The Desktop's name, large and faint, so Mission Control shows which Desktop is which.
 struct NameOverlay: View {
+    /// Point sizes the menu's slider moves between.
+    static let sizes: ClosedRange<Double> = 60...320
+    static let defaultSize = 160.0
+
     let name: String
     let color: Color?
+    let size: Double
 
     var body: some View {
         Text(name)
-            .font(.system(size: 160, weight: .bold, design: .rounded))
+            .font(.system(size: size, weight: .bold, design: .rounded))
             .lineLimit(1)
             .minimumScaleFactor(0.2)
             .foregroundStyle((color ?? .white).opacity(0.65))
