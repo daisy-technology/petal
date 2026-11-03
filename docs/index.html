@@ -63,12 +63,14 @@
         <div class="spaces" aria-hidden="true">
           <div class="track">
             <div class="space s0">
+              <span class="wall-name"></span><i class="edge"></i>
               <div class="window notes">
                 <div class="titlebar"><i></i><i></i><i></i><span>Notes</span></div>
                 <div class="body"><h4>Lorem ipsum</h4><p class="typed" data-type="notes"></p></div>
               </div>
             </div>
             <div class="space s1">
+              <span class="wall-name"></span><i class="edge"></i>
               <div class="window editor">
                 <div class="titlebar"><i></i><i></i><i></i><span>lorem.swift — Editor</span></div>
                 <div class="body"><pre class="gutter">1
@@ -84,6 +86,7 @@
               </div>
             </div>
             <div class="space s2">
+              <span class="wall-name"></span><i class="edge"></i>
               <div class="window terminal">
                 <div class="titlebar"><i></i><i></i><i></i><span>Terminal</span></div>
                 <div class="body"><pre class="typed" data-type="shell"></pre></div>
@@ -92,18 +95,22 @@
           </div>
         </div>
 
-        <div class="edge" aria-hidden="true"></div>
+        <div class="mc-labels" aria-hidden="true"><span>Desktop 1</span><span>Desktop 2</span><span>Desktop 3</span></div>
 
         <div class="dock" aria-hidden="true">
           <span class="app a-notes"></span><span class="app a-editor"></span><span class="app a-term"></span><span class="sep"></span><img src="icon.png" alt="">
         </div>
 
-        <div class="petal-menu" id="petal-menu" role="group" aria-label="Petal menu, try it: click to switch, double-click to rename">
+        <div class="petal-menu" id="petal-menu" role="group" aria-label="Petal menu, try it: click to switch, double-click to rename, hold to reorder">
           <div class="rows">
             <div class="row" role="button" tabindex="0" data-i="0"><span class="dot"></span><span class="name">Desktop 1</span><svg class="check" viewBox="0 0 12 12" aria-label="Current"><path d="M2 6.5 4.8 9 10 3"/></svg></div>
             <div class="row" role="button" tabindex="0" data-i="1"><span class="dot"></span><span class="name">Desktop 2</span><svg class="check" viewBox="0 0 12 12" aria-label="Current"><path d="M2 6.5 4.8 9 10 3"/></svg></div>
             <div class="row" role="button" tabindex="0" data-i="2"><span class="dot"></span><span class="name">Desktop 3</span><svg class="check" viewBox="0 0 12 12" aria-label="Current"><path d="M2 6.5 4.8 9 10 3"/></svg></div>
           </div>
+          <hr>
+          <button class="setting" role="switch" aria-checked="true" data-pref="name">Show name on desktop<span class="toggle"></span></button>
+          <button class="setting" role="switch" aria-checked="true" data-pref="edge">Show color edge<span class="toggle"></span></button>
+          <button class="setting" role="switch" aria-checked="true" data-pref="login">Launch at login<span class="toggle"></span></button>
           <hr>
           <p class="hint">Click to switch, double-click to rename, hold to reorder.</p>
         </div>
@@ -126,12 +133,12 @@
       <li class="step" data-step="2">
         <span class="num">2</span>
         <h2>Double-click to name it</h2>
-        <p>Click the flower in the menu bar, then double-click a Desktop and type. The name of the Desktop you're on stays in the menu bar.</p>
+        <p>Click the flower in the menu bar, then double-click a Desktop and type. The name shows in the menu bar and in large, faint letters on the Desktop's wallpaper, behind your windows.</p>
       </li>
       <li class="step" data-step="3">
         <span class="num">3</span>
         <h2>Give it a color</h2>
-        <p>Pick one of eight colors or drag along the hue strip for your own. The flower takes the color, and a thin edge in that color frames the Desktop, in Mission Control too.</p>
+        <p>Pick one of eight colors or drag along the hue strip for your own. The flower, the thin edge around the Desktop and the name on its wallpaper all take the color.</p>
       </li>
       <li class="step" data-step="4">
         <span class="num">4</span>
@@ -142,6 +149,11 @@
         <span class="num">5</span>
         <h2>Hold to reorder</h2>
         <p>Press and hold a Desktop, then drag it where you want it. Mission Control keeps its own order; the list in Petal is yours.</p>
+      </li>
+      <li class="step" data-step="6">
+        <span class="num">6</span>
+        <h2>Tell them apart in Mission Control</h2>
+        <p>Mission Control still labels them Desktop 1, 2 and 3, and only macOS can change that. While Mission Control is open, Petal brings each name in front of the windows, so you can see which Desktop is which even when a big app fills it.</p>
       </li>
     </ol>
   </section>
@@ -186,7 +198,7 @@
   <section class="limits wrap">
     <div>
       <h2>What it can't do</h2>
-      <p>The labels inside Mission Control stay "Desktop 1, 2, 3", and Mission Control keeps its own order. The Dock owns both, and changing them means turning off System Integrity Protection. Petal won't ask you to do that. Instead it writes each name large and faint on the Desktop's wallpaper, so you can still tell them apart in Mission Control.</p>
+      <p>The labels inside Mission Control stay "Desktop 1, 2, 3", and Mission Control keeps its own order. The Dock owns both, and changing them means turning off System Integrity Protection. Petal won't ask you to do that. Instead it writes each name large on the Desktop's wallpaper and brings it in front of the windows while Mission Control is open.</p>
     </div>
     <div>
       <h2>Windows and Linux</h2>

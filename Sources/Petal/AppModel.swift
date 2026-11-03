@@ -73,6 +73,7 @@ final class AppModel: ObservableObject {
     let labels = Labels()
     private let edges = OverlayController(level: .floating)
     private let names = OverlayController(level: .wallpaper)
+    private var missionControl: MissionControlWatcher?
     private var observers: [NSObjectProtocol] = []
 
     init() {
@@ -87,6 +88,11 @@ final class AppModel: ObservableObject {
             NotificationCenter.default.addObserver(
                 forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main, using: onChange),
         ]
+        // On the wallpaper the name hides behind big windows; while Mission Control
+        // is open it sits above them, so every Desktop shows which one it is.
+        missionControl = MissionControlWatcher { [weak self] open in
+            self?.names.level = open ? .floating : .wallpaper
+        }
         refresh()
     }
 

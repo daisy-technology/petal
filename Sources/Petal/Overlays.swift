@@ -10,8 +10,11 @@ import SwiftUI
 /// is on screen. macOS has no public way to put a window on another Space.
 @MainActor
 final class OverlayController {
-    private let level: NSWindow.Level
     private var windows: [String: (window: NSWindow, display: String)] = [:]
+
+    var level: NSWindow.Level {
+        didSet { for entry in windows.values { entry.window.level = level } }
+    }
 
     init(level: NSWindow.Level) { self.level = level }
 
@@ -70,6 +73,39 @@ final class OverlayController {
         }
         // "Main" shows up when Displays have separate Spaces is off.
         return match ?? NSScreen.screens.first
+    }
+}
+
+/// Tells when Mission Control is open. There's no API for it, but while it is,
+/// the Dock shows a full-screen window at layer 20, and at no other time.
+@MainActor
+final class MissionControlWatcher {
+    private var timer: Timer?
+    private(set) var isOpen = false
+
+    init(onChange: @escaping @MainActor (Bool) -> Void) {
+        // ponytail: polls 4 times a second; CGWindowList is cheap and there's no notification to use instead.
+        timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                let open = Self.dockCoversScreen()
+                if open != self.isOpen {
+                    self.isOpen = open
+                    onChange(open)
+                }
+            }
+        }
+    }
+
+    private static func dockCoversScreen() -> Bool {
+        guard let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] else { return false }
+        return list.contains { window in
+            guard window[kCGWindowOwnerName as String] as? String == "Dock",
+                  window[kCGWindowLayer as String] as? Int == 20,
+                  let bounds = window[kCGWindowBounds as String] as? [String: CGFloat]
+            else { return false }
+            return (bounds["Height"] ?? 0) >= 400
+        }
     }
 }
 

@@ -153,16 +153,48 @@ h1 { font-size: clamp(2.4rem, 7vw, 4.25rem); line-height: 1.04; letter-spacing: 
   transition: transform 450ms cubic-bezier(0.2, 0.8, 0.2, 1);
   will-change: transform;
 }
-.space { position: relative; flex: 1; }
-.s0 { background: radial-gradient(110% 90% at 15% 10%, #5d7cf0 0%, transparent 55%), radial-gradient(80% 70% at 100% 100%, #f2a65a 0%, transparent 60%), linear-gradient(160deg, #23307a, #0b1240 70%); }
-.s1 { background: radial-gradient(110% 90% at 85% 10%, #4fa3f7 0%, transparent 55%), radial-gradient(80% 70% at 0% 100%, #7a5cf0 0%, transparent 60%), linear-gradient(200deg, #1f3a8a, #0a1440 70%); }
-.s2 { background: radial-gradient(110% 90% at 50% 0%, #3fbf9a 0%, transparent 55%), radial-gradient(80% 70% at 100% 100%, #2a6fd6 0%, transparent 60%), linear-gradient(170deg, #143c5c, #071a33 70%); }
+.space { position: relative; flex: 1; overflow: hidden; transform-origin: 0 0; transition: transform 500ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 300ms ease, border-radius 500ms ease; }
+
+/* The Desktop's name on its wallpaper, under every window (FR-10). */
+.wall-name {
+  position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%);
+  padding: 0 6%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: clip;
+  font: 800 9cqw/1 ui-rounded, system-ui, sans-serif; letter-spacing: -0.02em;
+  color: var(--wall, #fff); opacity: 0.6; text-shadow: 0 0.3cqw 1.2cqw rgba(0, 0, 0, 0.35);
+  transition: color 250ms ease, opacity 250ms ease;
+}
+.desktop.no-name .wall-name { opacity: 0; }
+/* In Mission Control the name comes in front of the windows. */
+.desktop.mc .wall-name { z-index: 3; opacity: 0.8; }
+.s0 { background: url(wallpaper.svg) center bottom / cover no-repeat, radial-gradient(110% 90% at 15% 10%, #5d7cf0 0%, transparent 55%), radial-gradient(80% 70% at 100% 100%, #f2a65a 0%, transparent 60%), linear-gradient(160deg, #23307a, #0b1240 70%); }
+.s1 { background: url(wallpaper.svg) center bottom / cover no-repeat, radial-gradient(110% 90% at 85% 10%, #4fa3f7 0%, transparent 55%), radial-gradient(80% 70% at 0% 100%, #7a5cf0 0%, transparent 60%), linear-gradient(200deg, #1f3a8a, #0a1440 70%); }
+.s2 { background: url(wallpaper.svg) center bottom / cover no-repeat, radial-gradient(110% 90% at 50% 0%, #3fbf9a 0%, transparent 55%), radial-gradient(80% 70% at 100% 100%, #2a6fd6 0%, transparent 60%), linear-gradient(170deg, #143c5c, #071a33 70%); }
 
 .edge {
-  position: absolute; inset: 3cqw 0 0 0; z-index: 3; pointer-events: none;
-  border: max(0.35cqw, 2px) solid var(--tint);
+  position: absolute; inset: 3cqw 0 0 0; z-index: 2; pointer-events: none;
+  border: max(0.35cqw, 2px) solid var(--edge, transparent);
   transition: border-color 250ms ease;
 }
+.desktop.no-edge .edge { border-color: transparent; }
+
+/* Mission Control: the Desktops shrink into thumbnails. The labels stay "Desktop N"; the names on the wallpapers tell them apart. */
+.spaces { transition: background-color 400ms ease; }
+.desktop.mc .spaces { background: #070c2c; }
+.desktop.mc .track { transform: none; }
+.desktop.mc .space { cursor: pointer; border-radius: 4cqw; box-shadow: 0 2cqw 5cqw rgba(0, 0, 0, 0.5); }
+.desktop.mc .space.current { box-shadow: 0 0 0 1.6cqw #fff, 0 2cqw 5cqw rgba(0, 0, 0, 0.5); }
+.desktop.mc .s0 { transform: translate(4cqw, 18cqw) scale(0.28); }
+.desktop.mc .s1 { transform: translate(-64cqw, 18cqw) scale(0.28); }
+.desktop.mc .s2 { transform: translate(-132cqw, 18cqw) scale(0.28); }
+.mc-labels {
+  position: absolute; left: 4cqw; right: 4cqw; top: 37.5cqw; z-index: 3;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 4cqw;
+  text-align: center; color: #fff; font-size: max(1.4cqw, 7px);
+  opacity: 0; transition: opacity 250ms ease; pointer-events: none;
+}
+.desktop.mc .mc-labels { opacity: 0.9; transition-delay: 250ms; }
+.desktop.mc .dock { opacity: 0; }
+.dock { transition: opacity 250ms ease; }
 
 .window {
   position: absolute; border-radius: 1cqw; overflow: hidden;
@@ -176,15 +208,15 @@ h1 { font-size: clamp(2.4rem, 7vw, 4.25rem); line-height: 1.04; letter-spacing: 
 .titlebar i { width: 0.9cqw; height: 0.9cqw; border-radius: 50%; background: var(--win-muted); opacity: 0.45; }
 .titlebar span { margin-left: auto; margin-right: auto; padding-right: 3cqw; }
 .window .body { padding: 1.4cqw 1.8cqw; height: calc(100% - 2.6cqw); overflow: hidden; }
-.notes { left: 8%; top: 14%; width: 46%; height: 58%; }
+.notes { left: 6%; top: 8%; width: 40%; height: 32%; z-index: 1; }
 .notes h4 { margin: 0 0 0.8cqw; font-size: 1.5em; letter-spacing: -0.01em; }
 .notes p { margin: 0; line-height: 1.55; white-space: pre-wrap; }
-.editor { left: 30%; top: 11%; width: 58%; height: 64%; }
+.editor { left: 40%; top: 7%; width: 52%; height: 33%; z-index: 1; }
 .editor .body { display: flex; gap: 1.6cqw; font: max(1.2cqw, 6px)/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; }
 .editor pre { margin: 0; }
 .gutter { color: var(--win-muted); text-align: right; opacity: 0.6; }
 .code { white-space: pre; color: var(--win-text); }
-.terminal { left: 18%; top: 16%; width: 56%; height: 56%; background: #0d1020; color: #d8f5e4; }
+.terminal { left: 22%; top: 8%; width: 52%; height: 32%; z-index: 1; background: #0d1020; color: #d8f5e4; }
 .terminal .titlebar { background: #1a1e33; }
 .terminal pre { margin: 0; font: max(1.2cqw, 6px)/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; }
 .typed::after { content: ""; display: inline-block; width: 0.5em; height: 1.1em; vertical-align: -0.2em; margin-left: 1px; background: currentColor; opacity: 0.6; animation: blink 1s steps(1) infinite; }
@@ -238,6 +270,15 @@ h1 { font-size: clamp(2.4rem, 7vw, 4.25rem); line-height: 1.04; letter-spacing: 
 .check { width: 0.9em; height: 0.9em; flex: none; fill: none; stroke: var(--win-muted); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; visibility: hidden; }
 .row.current .check { visibility: visible; }
 .petal-menu hr { border: 0; border-top: 1px solid var(--hover); margin: 0.4em 0.3em; }
+.setting {
+  display: flex; align-items: center; justify-content: space-between; width: 100%; height: 2em;
+  padding: 0 0.6em; border: 0; border-radius: 0.45em; background: transparent; color: inherit; font: inherit; cursor: pointer; text-align: left;
+}
+.setting:hover, .setting:focus-visible { background: var(--hover); outline: none; }
+.toggle { position: relative; width: 1.9em; height: 1.1em; border-radius: 1em; background: var(--hover); box-shadow: inset 0 0 0 1px var(--menu-line); transition: background-color 200ms ease; flex: none; }
+.toggle::after { content: ""; position: absolute; top: 0.1em; left: 0.1em; width: 0.9em; height: 0.9em; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.setting[aria-checked="true"] .toggle { background: var(--c-blue); }
+.setting[aria-checked="true"] .toggle::after { transform: translateX(0.8em); }
 .hint { margin: 0; padding: 0 0.6em 0.2em; font-size: 0.82em; color: var(--win-muted); }
 
 /* Windows / Linux: coming soon */

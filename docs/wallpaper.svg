@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMax slice">
+  <!-- Rolling hills in Daisy navy. The sky comes from each Desktop's CSS gradient, so one file gives three moods. -->
+  <g fill="#060d3a">
+    <path opacity=".28" d="M0 610C190 540 400 590 620 560S1080 500 1290 545 1530 590 1600 575V1000H0Z"/>
+    <path opacity=".45" d="M0 700C250 640 470 690 760 655S1230 620 1600 690V1000H0Z"/>
+    <path opacity=".65" d="M0 800C310 745 610 790 910 760S1390 735 1600 790V1000H0Z"/>
+    <path opacity=".85" d="M0 900C360 860 700 890 1020 870S1440 850 1600 880V1000H0Z"/>
+  </g>
+  <g fill="#fff" opacity=".7">
+    <circle cx="240" cy="884" r="5"/><circle cx="268" cy="896" r="4"/><circle cx="1180" cy="872" r="5"/>
+    <circle cx="1214" cy="886" r="3.5"/><circle cx="760" cy="902" r="4"/><circle cx="1460" cy="890" r="4"/>
+  </g>
+</svg>

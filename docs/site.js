@@ -1,5 +1,5 @@
 // The live demo desktop on the Petal site: a clock that follows the visitor's
-// time, apps typing lorem ipsum, a Petal menu that works, and five scenes that
+// time, apps typing lorem ipsum, a Petal menu that works, and six scenes that
 // play as the story scrolls past.
 (() => {
   'use strict';
@@ -8,6 +8,7 @@
 
   const reduce = matchMedia('(prefers-reduced-motion: reduce)');
   const rows = [...desk.querySelectorAll('.row')];
+  const spaces = [...desk.querySelectorAll('.space')];
   const nameEl = document.getElementById('mb-name');
   const appEl = document.getElementById('mb-app');
   const petalButton = document.getElementById('mb-petal');
@@ -21,18 +22,28 @@
 
   const fresh = () => ({
     names: DEFAULT.slice(), colors: [null, null, null], current: 0, menu: true,
-    order: [0, 1, 2], lifted: null, editing: null, pressed: null,
+    order: [0, 1, 2], lifted: null, editing: null, pressed: null, mc: false,
   });
   let state = fresh();
+  // The menu's switches. Scenes don't reset them; they're the visitor's.
+  const prefs = { name: true, edge: true, login: true };
 
   function render() {
     const i = state.current;
     nameEl.textContent = state.names[i];
     appEl.textContent = APPS[i];
     desk.style.setProperty('--space', i);
-    desk.style.setProperty('--tint', state.colors[i] || 'transparent');
     desk.style.setProperty('--flower', state.colors[i] || '#fff');
-    desk.classList.toggle('menu-open', state.menu);
+    desk.classList.toggle('menu-open', state.menu && !state.mc);
+    desk.classList.toggle('mc', state.mc);
+    desk.classList.toggle('no-name', !prefs.name);
+    desk.classList.toggle('no-edge', !prefs.edge);
+    spaces.forEach((space, k) => {
+      space.querySelector('.wall-name').textContent = state.names[k];
+      space.style.setProperty('--wall', state.colors[k] || '#fff');
+      space.style.setProperty('--edge', state.colors[k] || 'transparent');
+      space.classList.toggle('current', k === i);
+    });
     petalButton.setAttribute('aria-expanded', String(state.menu));
     rows.forEach((row, k) => {
       const name = row.querySelector('.name');
@@ -95,6 +106,10 @@
       later(950, () => { state.order = [2, 0, 1]; });
       later(1700, () => { state.lifted = null; });
     },
+    6() {
+      state = Object.assign(colored(), { current: 1, order: [2, 0, 1] });
+      later(400, () => { state.menu = false; state.mc = true; });
+    },
   };
 
   let step = 0;
@@ -123,9 +138,26 @@
 
   petalButton.addEventListener('click', () => {
     cancel();
-    state.menu = !state.menu;
+    state.menu = state.mc || !state.menu;
+    state.mc = false;
     render();
   });
+
+  // In Mission Control, clicking a thumbnail opens that Desktop, as on a Mac.
+  spaces.forEach((space, k) => space.addEventListener('click', () => {
+    if (!state.mc) return;
+    cancel();
+    state.mc = false;
+    state.current = k;
+    render();
+  }));
+
+  desk.querySelectorAll('.setting').forEach((button) => button.addEventListener('click', () => {
+    const key = button.dataset.pref;
+    prefs[key] = !prefs[key];
+    button.setAttribute('aria-checked', String(prefs[key]));
+    render();
+  }));
 
   let suppressClick = false;
   rows.forEach((row, k) => {
