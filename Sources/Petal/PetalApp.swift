@@ -50,9 +50,12 @@ struct MenuView: View {
                         .padding(.top, index == 0 ? 4 : 12)
                         .padding(.bottom, 4)
                 }
-                DesktopList(model: model, desktops: display.desktops, picking: $picking) { desktop in
-                    if model.switchTo(desktop) { dismiss() }
-                }
+                DesktopList(model: model, desktops: display.desktops, picking: $picking,
+                            onSwitch: { desktop in if model.switchTo(desktop) { dismiss() } },
+                            onHold: {
+                                dismiss()
+                                model.reorderInMissionControl()
+                            })
             }
             if model.snapshot.desktops.isEmpty {
                 Text("Couldn’t read your Desktops.")
@@ -123,7 +126,7 @@ struct MenuView: View {
 
             Divider().padding(.vertical, 6)
 
-            Text("Click to switch, double-click to rename, hold to reorder.")
+            Text("Click to switch, double-click to rename, hold to move it in Mission Control.")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -143,62 +146,26 @@ struct MenuView: View {
     }
 }
 
-/// One display's Desktops. Press and hold a row to lift it, drag, release to drop.
+/// One display's Desktops, in Mission Control order.
 struct DesktopList: View {
     @ObservedObject var model: AppModel
     let desktops: [Desktop]
     @Binding var picking: String?
     let onSwitch: (Desktop) -> Void
-
-    @State private var dragging: String?
-    @State private var offset: CGFloat = 0
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    private var from: Int? { desktops.firstIndex { $0.uuid == dragging } }
-    private var target: Int? {
-        from.map { min(max($0 + Int((offset / Metrics.rowHeight).rounded()), 0), desktops.count - 1) }
-    }
+    let onHold: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
-            ForEach(Array(desktops.enumerated()), id: \.element.uuid) { index, desktop in
-                let lifted = dragging == desktop.uuid
+            ForEach(desktops, id: \.uuid) { desktop in
                 DesktopRow(
                     model: model,
                     desktop: desktop,
-                    lifted: lifted,
                     picking: Binding(
                         get: { picking == desktop.uuid },
                         set: { picking = $0 ? desktop.uuid : nil }),
                     onSwitch: { onSwitch(desktop) },
-                    onLift: {
-                        picking = nil
-                        withAnimation(reduceMotion ? nil : Metrics.spring) { dragging = desktop.uuid }
-                    },
-                    onDrag: { offset = $0 },
-                    onDrop: { drop(desktop) })
-                .offset(y: shift(index, lifted: lifted))
-                .zIndex(lifted ? 1 : 0)
-                .animation(lifted || reduceMotion ? nil : Metrics.spring, value: target)
+                    onHold: onHold)
             }
-        }
-    }
-
-    /// The lifted row follows the pointer 1:1; the rows it passes slide one row the other way.
-    private func shift(_ index: Int, lifted: Bool) -> CGFloat {
-        guard let from, let target else { return 0 }
-        if lifted { return offset }
-        if from < target, index > from, index <= target { return -Metrics.rowHeight }
-        if target < from, index >= target, index < from { return Metrics.rowHeight }
-        return 0
-    }
-
-    private func drop(_ desktop: Desktop) {
-        let destination = target ?? 0
-        withAnimation(reduceMotion ? nil : Metrics.spring) {
-            model.move(desktop, to: destination)
-            dragging = nil
-            offset = 0
         }
     }
 }
@@ -206,12 +173,9 @@ struct DesktopList: View {
 struct DesktopRow: View {
     @ObservedObject var model: AppModel
     let desktop: Desktop
-    let lifted: Bool
     @Binding var picking: Bool
     let onSwitch: () -> Void
-    let onLift: () -> Void
-    let onDrag: (CGFloat) -> Void
-    let onDrop: () -> Void
+    let onHold: () -> Void
 
     @State private var editing = false
     @State private var customOpen = false
@@ -264,24 +228,22 @@ struct DesktopRow: View {
             .contentShape(Rectangle())
             .gesture(editing ? nil : taps)
             .simultaneousGesture(editing ? nil : pressTracking)
-            .simultaneousGesture(editing ? nil : reorder)
+            .simultaneousGesture(editing ? nil : hold)
             .onHover { hovering = $0 }
             .padding(.vertical, 2)
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isButton)
             .accessibilityHint("Switches to this Desktop")
             .accessibilityAction(named: "Rename", beginEditing)
+            .accessibilityAction(named: "Move in Mission Control", onHold)
 
             if picking { swatches }
         }
-        .scaleEffect(lifted ? 1.03 : 1)
-        .shadow(color: .black.opacity(lifted ? 0.18 : 0), radius: 8, y: 3)
         .animation(reduceMotion ? nil : .snappy(duration: 0.2), value: picking)
         .animation(reduceMotion ? nil : .snappy(duration: 0.2), value: customOpen)
     }
 
     private var highlight: Color {
-        if lifted { return Color(nsColor: .controlBackgroundColor) }
         if pressed { return .primary.opacity(0.12) }
         return .primary.opacity(hovering || editing ? 0.07 : 0)
     }
@@ -304,26 +266,13 @@ struct DesktopRow: View {
             .onEnded { _ in pressed = false }
     }
 
-    private var reorder: some Gesture {
-        LongPressGesture(minimumDuration: 0.3)
-            .sequenced(before: DragGesture(minimumDistance: 0))
-            .onChanged { value in
-                switch value {
-                case .first(true):
-                    break
-                case .second(true, let drag):
-                    if !suppressTap {
-                        suppressTap = true
-                        onLift()
-                    }
-                    onDrag(drag?.translation.height ?? 0)
-                default:
-                    break
-                }
-            }
+    /// Holding a row opens Mission Control, where Desktops really move. Petal's list follows.
+    private var hold: some Gesture {
+        LongPressGesture(minimumDuration: 0.4)
             .onEnded { _ in
-                guard suppressTap else { return }
-                onDrop()
+                suppressTap = true
+                pressed = false
+                onHold()
                 // The release can still look like a click; ignore it until the double-click window ends.
                 DispatchQueue.main.asyncAfter(deadline: .now() + NSEvent.doubleClickInterval + 0.1) { suppressTap = false }
             }

@@ -152,6 +152,52 @@ final class MissionControlWatcher {
     }
 }
 
+/// A note at the bottom of the screen while Mission Control is open for reordering.
+@MainActor
+final class MissionControlTip {
+    private var window: NSWindow?
+
+    func show() {
+        hide()
+        guard let screen = NSScreen.main else { return }
+        let size = NSSize(width: 520, height: 64)
+        let frame = NSRect(x: screen.frame.midX - size.width / 2, y: screen.visibleFrame.minY + 120,
+                           width: size.width, height: size.height)
+        let window = NSWindow(contentRect: frame, styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        window.ignoresMouseEvents = true
+        window.level = .floating
+        window.collectionBehavior = [.stationary, .ignoresCycle, .fullScreenNone]
+        let host = NSHostingView(rootView: TipView())
+        host.sizingOptions = []
+        window.contentView = host
+        window.orderFrontRegardless()
+        self.window = window
+        // In case Mission Control never opens.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 20) { [weak self, weak window] in
+            if let window, self?.window === window { self?.hide() }
+        }
+    }
+
+    func hide() {
+        window?.orderOut(nil)
+        window = nil
+    }
+}
+
+struct TipView: View {
+    var body: some View {
+        Label("Drag a Desktop in the bar at the top to move it. Petal’s list follows.", systemImage: "arrow.up")
+            .font(.system(size: 15, weight: .medium))
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
+            .background(.regularMaterial, in: Capsule())
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
 extension NSWindow.Level {
     /// On the wallpaper, under the desktop icons and every window.
     static let wallpaper = NSWindow.Level(Int(CGWindowLevelForKey(.desktopWindow)) + 1)

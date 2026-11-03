@@ -22,7 +22,7 @@
 
   const fresh = () => ({
     names: DEFAULT.slice(), colors: [null, null, null], current: 0, menu: true,
-    order: [0, 1, 2], lifted: null, editing: null, pressed: null, mc: false,
+    order: [0, 1, 2], editing: null, pressed: null, mc: false, tip: false,
   });
   let state = fresh();
   // The menu's switches. Scenes don't reset them; they're the visitor's.
@@ -36,6 +36,7 @@
     desk.style.setProperty('--flower', state.colors[i] || '#fff');
     desk.classList.toggle('menu-open', state.menu && !state.mc);
     desk.classList.toggle('mc', state.mc);
+    desk.classList.toggle('tip', state.tip);
     desk.classList.toggle('no-name', !prefs.name);
     desk.classList.toggle('no-edge', !prefs.edge);
     spaces.forEach((space, k) => {
@@ -43,6 +44,7 @@
       space.style.setProperty('--wall', state.colors[k] || '#fff');
       space.style.setProperty('--edge', state.colors[k] || 'transparent');
       space.classList.toggle('current', k === i);
+      space.style.setProperty('--slot', state.order.indexOf(k));
     });
     petalButton.setAttribute('aria-expanded', String(state.menu));
     rows.forEach((row, k) => {
@@ -53,7 +55,6 @@
       dot.classList.toggle('filled', Boolean(state.colors[k]));
       row.style.setProperty('--pos', state.order.indexOf(k));
       row.classList.toggle('current', k === i);
-      row.classList.toggle('lifted', state.lifted === k);
       row.classList.toggle('editing', state.editing === k);
       row.classList.toggle('pressed', state.pressed === k);
     });
@@ -102,9 +103,10 @@
     },
     5() {
       state = Object.assign(colored(), { current: 1 });
-      later(500, () => { state.lifted = 2; });
-      later(950, () => { state.order = [2, 0, 1]; });
-      later(1700, () => { state.lifted = null; });
+      later(500, () => { state.pressed = 2; });
+      later(950, () => { state.pressed = null; state.menu = false; state.mc = true; state.tip = true; });
+      later(1900, () => { state.order = [2, 0, 1]; });
+      later(3300, () => { state.mc = false; state.tip = false; state.menu = true; });
     },
     6() {
       state = Object.assign(colored(), { current: 1, order: [2, 0, 1] });
@@ -223,50 +225,32 @@
       if (e.key === 'F2') { e.preventDefault(); rename(k); }
     });
 
+    // Hold: Petal opens Mission Control, where the Desktop really moves. Here the drag is acted out.
     row.addEventListener('pointerdown', (e) => {
       if (name.isContentEditable || e.button !== 0) return;
-      const startY = e.clientY;
-      const rowHeight = row.getBoundingClientRect().height;
-      const from = state.order.indexOf(k);
-      let lifted = false;
       const hold = setTimeout(() => {
-        lifted = true;
         clearTimeout(clickTimer);
-        cancel();
-        state.pressed = null;
-        state.lifted = k;
-        render();
-        row.setPointerCapture?.(e.pointerId);
-      }, 320);
-      const move = (ev) => {
-        if (!lifted) {
-          if (Math.abs(ev.clientY - startY) > 6) clearTimeout(hold);
-          return;
-        }
-        const to = Math.max(0, Math.min(rows.length - 1, from + Math.round((ev.clientY - startY) / rowHeight)));
-        if (state.order.indexOf(k) !== to) {
-          const order = state.order.filter((x) => x !== k);
-          order.splice(to, 0, k);
-          state.order = order;
-          render();
-        }
-      };
-      const up = () => {
-        clearTimeout(hold);
-        row.removeEventListener('pointermove', move);
-        row.removeEventListener('pointerup', up);
-        row.removeEventListener('pointercancel', up);
-        if (!lifted) return;
-        state.lifted = null;
-        render();
         suppressClick = true;
-        setTimeout(() => { suppressClick = false; }, 350);
-      };
-      row.addEventListener('pointermove', move);
-      row.addEventListener('pointerup', up);
-      row.addEventListener('pointercancel', up);
+        moveInMissionControl(k);
+      }, 400);
+      // The click that follows the release of a hold shouldn't switch Desktops.
+      const stop = () => { clearTimeout(hold); setTimeout(() => { suppressClick = false; }, 50); };
+      row.addEventListener('pointerup', stop, { once: true });
+      row.addEventListener('pointercancel', stop, { once: true });
+      row.addEventListener('pointerleave', stop, { once: true });
     });
   });
+
+  function moveInMissionControl(k) {
+    cancel();
+    state.pressed = null;
+    state.menu = false;
+    state.mc = true;
+    state.tip = true;
+    render();
+    later(900, () => { state.order = [k, ...state.order.filter((x) => x !== k)]; });
+    later(2300, () => { state.mc = false; state.tip = false; state.menu = true; });
+  }
 
   function rename(k) {
     const name = rows[k].querySelector('.name');
