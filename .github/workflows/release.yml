@@ -1,0 +1,26 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test
+      - run: scripts/package.sh "${GITHUB_REF_NAME#v}"
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shasum -a 256 dist/Petal.zip | tee dist/Petal.zip.sha256
+          # A tag with a suffix (v0.1.0-beta.1) is published as a pre-release.
+          pre=""; [[ "$GITHUB_REF_NAME" == *-* ]] && pre="--prerelease"
+          gh release create "$GITHUB_REF_NAME" dist/Petal.zip dist/Petal.zip.sha256 \
+            --title "Petal ${GITHUB_REF_NAME}" --generate-notes --verify-tag $pre
