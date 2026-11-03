@@ -70,6 +70,14 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Also bring the name in front of the windows while the ⌘-Tab switcher is held.
+    @Published var nameInAppSwitcher: Bool {
+        didSet {
+            UserDefaults.standard.set(nameInAppSwitcher, forKey: "nameInAppSwitcher")
+            placeNames()
+        }
+    }
+
     @Published var nameSize: Double {
         didSet {
             UserDefaults.standard.set(nameSize, forKey: "nameSize")
@@ -96,6 +104,7 @@ final class AppModel: ObservableObject {
     init() {
         showEdge = UserDefaults.standard.object(forKey: "showEdge") as? Bool ?? true
         showName = UserDefaults.standard.object(forKey: "showName") as? Bool ?? true
+        nameInAppSwitcher = UserDefaults.standard.bool(forKey: "nameInAppSwitcher")
         let size = UserDefaults.standard.double(forKey: "nameSize")
         nameSize = NameOverlay.sizes.contains(size) ? size : NameOverlay.defaultSize
         nameTransition = NameTransition.load(UserDefaults.standard.string(forKey: "nameTransition"))
@@ -224,7 +233,8 @@ final class AppModel: ObservableObject {
     }
 
     private func placeNames() {
-        names.move(to: previewingName || missionControl?.isOpen == true ? .floating : .wallpaper,
+        let overview = missionControl.map { $0.isOpen && (nameInAppSwitcher || !$0.isAppSwitcher) } ?? false
+        names.move(to: previewingName || overview ? .floating : .wallpaper,
                    transition: nameTransition, duration: nameTransitionDuration)
     }
 
